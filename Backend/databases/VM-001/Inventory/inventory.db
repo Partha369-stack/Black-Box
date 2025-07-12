@@ -4,12 +4,12 @@
       "id": "0",
       "name": "Test Product",
       "price": 1,
-      "quantity": 98,
+      "quantity": 96,
       "category": "Test",
       "slot": "A1",
       "image": "/VM-001/Inventory/product_images/1752254071074-111326902.png",
       "description": "A test product for 1 Rs",
-      "updatedAt": "2025-07-11T19:41:20.640Z"
+      "updatedAt": "2025-07-12T18:08:55.390Z"
     },
     {
       "id": "1",

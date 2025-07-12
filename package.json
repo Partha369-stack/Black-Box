@@ -1,0 +1,22 @@
+{
+  "name": "black-box-root",
+  "version": "1.0.0",
+  "description": "Root package for Black Box project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:admin": "npm --prefix ./Admin run build",
+    "build:vm001": "npm --prefix ./VM-001 run build",
+    "build:vm002": "npm --prefix ./VM-002 run build",
+    "build:all": "npm run build:admin && npm run build:vm001 && npm run build:vm002",
+    "start:backend": "npm --prefix ./Backend start",
+    "start:all": "npm run build:all && npm run start:backend & node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^3.0.0"
+  }
+}
