@@ -1,0 +1,204 @@
+const fs = require('fs');
+const path = require('path');
+
+const dbPath = path.join(__dirname, 'databases', 'VM-001', 'Inventory', 'inventory.db');
+
+const correctInventoryData = {
+  "inventory": [
+    {
+      "id": "0",
+      "name": "Test Product",
+      "price": 1,
+      "quantity": 99,
+      "category": "Test",
+      "slot": "A1",
+      "image": "/VM-001/Inventory/product_images/download.png",
+      "description": "A test product for 1 Rs",
+      "updatedAt": "2025-07-11T16:13:16.438Z"
+    },
+    {
+      "id": "1",
+      "name": "Classic Chips",
+      "price": 25,
+      "quantity": 15,
+      "category": "Snacks",
+      "slot": "A2",
+      "image": "/VM-001/Inventory/product_images/1cb22c3bb69c63b305b98a758709ce74.jpg",
+      "description": "Crispy potato chips with a classic flavor"
+    },
+    {
+      "id": "2",
+      "name": "Chocolate Bar",
+      "price": 45,
+      "quantity": 20,
+      "category": "Chocolates",
+      "slot": "A3",
+      "image": "/VM-001/Inventory/product_images/f2bbe83c1063a941a3c3f00723c38d09.jpg",
+      "description": "Rich milk chocolate bar"
+    },
+    {
+      "id": "3",
+      "name": "Energy Drink",
+      "price": 60,
+      "quantity": 12,
+      "category": "Beverages",
+      "slot": "B1",
+      "image": "/VM-001/Inventory/product_images/4e9143c5db094dd1e38f7179eb5c46ed.jpg",
+      "description": "Refreshing energy drink to boost your day"
+    },
+    {
+      "id": "4",
+      "name": "Cookies Pack",
+      "price": 35,
+      "quantity": 18,
+      "category": "Cookies",
+      "slot": "B2",
+      "image": "/VM-001/Inventory/product_images/fe0286b72522261bd2537444c3e7edd1.jpg",
+      "description": "Delicious chocolate chip cookies"
+    },
+    {
+      "id": "5",
+      "name": "Nuts Mix",
+      "price": 55,
+      "quantity": 10,
+      "category": "Nuts",
+      "slot": "B3",
+      "image": "/VM-001/Inventory/product_images/268f8bcab68ad3682f212d1dc9a682f5.jpg",
+      "description": "Premium mixed nuts for healthy snacking"
+    },
+    {
+      "id": "6",
+      "name": "Soda Can",
+      "price": 30,
+      "quantity": 25,
+      "category": "Beverages",
+      "slot": "C1",
+      "image": "/VM-001/Inventory/product_images/471c378262264215a354c98dcaf919e0.jpg",
+      "description": "Refreshing carbonated soft drink"
+    },
+    {
+      "id": "7",
+      "name": "Granola Bar",
+      "price": 20,
+      "quantity": 22,
+      "category": "Health",
+      "slot": "C2",
+      "image": "/VM-001/Inventory/product_images/072bced279d2a391ec771bceb968306c.jpg",
+      "description": "Healthy and wholesome granola bar"
+    },
+    {
+      "id": "8",
+      "name": "Pretzels",
+      "price": 20,
+      "quantity": 15,
+      "category": "Snacks",
+      "slot": "C3",
+      "image": "/VM-001/Inventory/product_images/0d104252bc53d286048f189994d1df15.jpg",
+      "description": "Salty and crunchy pretzels"
+    },
+    {
+      "id": "9",
+      "name": "Gummy Bears",
+      "price": 30,
+      "quantity": 18,
+      "category": "Candies",
+      "slot": "D1",
+      "image": "/VM-001/Inventory/product_images/705ece546b97e15f93b6296153757952.jpg",
+      "description": "Chewy and fruity gummy bears"
+    },
+    {
+      "id": "10",
+      "name": "Trail Mix",
+      "price": 50,
+      "quantity": 14,
+      "category": "Nuts",
+      "slot": "D2",
+      "image": "/VM-001/Inventory/product_images/3413adebaffe1abc33a4cb6859f0a112.jpg",
+      "description": "A mix of nuts, seeds, and dried fruit"
+    },
+    {
+      "id": "11",
+      "name": "Popcorn",
+      "price": 25,
+      "quantity": 20,
+      "category": "Snacks",
+      "slot": "D3",
+      "image": "/VM-001/Inventory/product_images/e8afb88c23626fcf20480941e3efa7b4.jpg",
+      "description": "Classic buttered popcorn"
+    },
+    {
+      "id": "12",
+      "name": "Beef Jerky",
+      "price": 70,
+      "quantity": 10,
+      "category": "Meat",
+      "slot": "E1",
+      "image": "/VM-001/Inventory/product_images/0ce988fabca6792fddce93c38f4c12ed.jpg",
+      "description": "Savory and high-protein beef jerky"
+    },
+    {
+      "id": "13",
+      "name": "Mint Gum",
+      "price": 15,
+      "quantity": 30,
+      "category": "Candies",
+      "slot": "E2",
+      "image": "/VM-001/Inventory/product_images/8b34cfffb15975590f87bd2361bf434e.jpg",
+      "description": "Refreshing mint-flavored chewing gum"
+    },
+    {
+      "id": "14",
+      "name": "Fruit Snacks",
+      "price": 25,
+      "quantity": 25,
+      "category": "Fruits",
+      "slot": "E3",
+      "image": "/VM-001/Inventory/product_images/a137489d48a5c315310cd1f9ecc70170.jpg",
+      "description": "Fruity and chewy snacks"
+    },
+    {
+      "id": "15",
+      "name": "Iced Tea",
+      "price": 40,
+      "quantity": 15,
+      "category": "Beverages",
+      "slot": "F1",
+      "image": "/VM-001/Inventory/product_images/11eb431a354c0ffa19368c330d233934.jpg",
+      "description": "Chilled and refreshing iced tea"
+    },
+    {
+      "id": "16",
+      "name": "Orange Juice",
+      "price": 50,
+      "quantity": 12,
+      "category": "Beverages",
+      "slot": "F2",
+      "image": "/VM-001/Inventory/product_images/477a1a78e30d03dfaf2afbf7894ee5fb.jpg",
+      "description": "Fresh and pulpy orange juice"
+    },
+    {
+      "id": "17",
+      "name": "Apple Juice",
+      "price": 50,
+      "quantity": 12,
+      "category": "Beverages",
+      "slot": "F3",
+      "image": "/VM-001/Inventory/product_images/183431741593d9fb14c6459a2d4b889d.jpg",
+      "description": "Sweet and refreshing apple juice"
+    },
+    {
+      "id": "18",
+      "name": "Water Bottle",
+      "price": 20,
+      "quantity": 40,
+      "category": "Water",
+      "slot": "G1",
+      "image": "/VM-001/Inventory/product_images/e9280a387e8049210642406c032b6a60.jpg",
+      "description": "Purified drinking water"
+    }
+  ]
+};
+
+fs.writeFileSync(dbPath, JSON.stringify(correctInventoryData, null, 2));
+
+console.log('Successfully fixed inventory.db!');
