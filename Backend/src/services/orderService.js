@@ -118,6 +118,7 @@ async function verifyPayment(tenantId, qrCodeId) {
   // Debug: Log the full response from Razorpay
   console.log('Razorpay payment response:', JSON.stringify(response.data, null, 2));
   // Check if any payment is successful
+  console.log('Payment items received:', response.data.items.map(item => ({ id: item.id, status: item.status })));
   const paidPayment = response.data.items.find(payment => payment.status === 'captured');
   console.log('Found paid payment:', paidPayment);
 

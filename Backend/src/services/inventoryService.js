@@ -2,7 +2,18 @@ const { getDbs } = require('../dataAccess/lowdbDataAccess');
 
 async function getInventory(tenantId) {
   const { inventoryDb } = getDbs(tenantId);
-  return inventoryDb.get('inventory').value();
+  const inventory = inventoryDb.get('inventory').value();
+  // Prepend tenant ID and directory structure to image paths
+  const inventoryWithFullImagePaths = inventory.map(item => {
+    if (item.image && item.image.startsWith('/product_img/')) {
+      return {
+        ...item,
+        image: `http://localhost:4001/${tenantId}/Inventory/product_images${item.image.substring('/product_img'.length)}`
+      };
+    }
+    return item;
+  });
+  return inventoryWithFullImagePaths;
 }
 
 async function addItemToInventory(tenantId, itemData) {
@@ -79,9 +90,16 @@ async function initializeInventory(tenantId, force = false) {
       { id: "18", name: "Water Bottle", price: 20, quantity: 40, category: "Water", slot: "G1", image: "/product_img/e9280a387e8049210642406c032b6a60.jpg", description: "Purified drinking water" }
     ];
     
-    // Note: Image paths in default inventory will need to be handled by the caller
-    // to include the tenant ID if serving static files from tenant directories.
-    inventoryDb.set('inventory', defaultInventory).write();
+    const inventoryWithFullImagePaths = defaultInventory.map(item => {
+      if (item.image && item.image.startsWith('/product_img/')) {
+        return {
+          ...item,
+          image: `http://localhost:4001/${tenantId}/Inventory/product_images${item.image.substring('/product_img'.length)}`
+        };
+      }
+      return item;
+    });
+    inventoryDb.set('inventory', inventoryWithFullImagePaths).write();
     // Assuming broadcastInventoryUpdate will be handled by the caller
     return defaultInventory;
   }

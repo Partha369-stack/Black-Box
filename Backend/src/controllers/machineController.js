@@ -2,7 +2,9 @@ const machineService = require('../services/machineService');
 
 async function getMachineStatus(req, res) {
   try {
-    const status = machineService.getMachineStatus();
+    const { machineId } = req.params;
+    const status = machineService.getMachineStatus(machineId);
+    console.log(`[MachineController] Returning status for ${machineId}:`, status); // Add logging
     res.json(status);
   } catch (err) {
     console.error('Error fetching machine status:', err);
@@ -13,3 +15,4 @@ async function getMachineStatus(req, res) {
 module.exports = {
   getMachineStatus,
 };
+

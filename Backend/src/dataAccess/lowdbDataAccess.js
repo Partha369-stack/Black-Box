@@ -34,8 +34,8 @@ function getDbs(tenantId) {
   const ordersAdapter = new FileSync(ordersDbPath);
   const ordersDb = low(ordersAdapter);
 
-  // Initialize orders.db if it doesn't exist
-  if (!fs.existsSync(ordersDbPath)) {
+  // Initialize orders.db if it's empty
+  if (!ordersDb.has('orders').value()) {
     ordersDb.defaults({ orders: [] }).write();
   }
 
@@ -44,8 +44,8 @@ function getDbs(tenantId) {
   const inventoryAdapter = new FileSync(inventoryDbPath);
   const inventoryDb = low(inventoryAdapter);
 
-  // Initialize inventory.db if it doesn't exist
-  if (!fs.existsSync(inventoryDbPath)) {
+  // Initialize inventory.db if it's empty
+  if (!inventoryDb.has('inventory').value()) {
     inventoryDb.defaults({ inventory: [] }).write();
   }
 

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "dev": "nodemon --ignore db.json index.js",
+    "dev": "kill-port 4001 && nodemon --ignore db.json index.js",
     "build": "echo \"No build step required for Node.js backend\""
   },
   "keywords": [],
@@ -23,6 +23,7 @@
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "kill-port": "^2.0.1"
   }
 }
