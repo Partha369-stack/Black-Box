@@ -10,7 +10,8 @@
     "build:vm002": "npm --prefix ./VM-002 run build",
     "build:all": "npm run build:admin && npm run build:vm001 && npm run build:vm002",
     "start:backend": "npm --prefix ./Backend start",
-    "start:all": "npm run build:all && npm run start:backend & node server.js"
+    "start:all": "npm run build:all && npm run start:backend & node server.js",
+    "dev:all": "concurrently \"npm --prefix ./Backend run dev\" \"npm --prefix ./Admin run dev\" \"npm --prefix ./VM-001 run dev\" \"npm --prefix ./VM-002 run dev\""
   },
   "keywords": [],
   "author": "",
@@ -18,5 +19,8 @@
   "dependencies": {
     "express": "^4.19.2",
     "http-proxy-middleware": "^3.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
   }
 }

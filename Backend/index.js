@@ -68,6 +68,8 @@ function tenantDbMiddleware(req, res, next) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+
 // Apply the middleware to all /api routes
 app.use('/api', tenantDbMiddleware);
 
