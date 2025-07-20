@@ -11,28 +11,30 @@ from pathlib import Path
 from flask_socketio import SocketIO, emit
 import logging
 from flask import Response
-from supabase_db import (
-    get_inventory, add_inventory, update_inventory, 
-    delete_inventory_item, get_orders, add_order, 
-    get_order, update_order  
-)
 
-# Load environment variables
+# Load environment variables first
 load_dotenv()
+
+try:
+    from supabase_db import (
+        get_inventory, add_inventory, update_inventory, 
+        delete_inventory_item, get_orders, add_order, 
+        get_order, update_order  
+    )
+    print("✅ Supabase connection established successfully!")
+except Exception as e:
+    print(f"❌ Failed to connect to Supabase: {e}")
+    print("💡 Falling back to local storage...")
+    # We'll implement local fallback if needed
 
 # Flask app setup
 app = Flask(__name__)
-CORS(app, origins=[ 'http://localhost:8000', 'http://localhost:8083', 'http://localhost:8084'],
+CORS(app, origins=['http://localhost:8000', 'http://localhost:8081', 'http://localhost:8083'],
      supports_credentials=True,
      allow_headers=['Content-Type', 'Authorization', 'x-tenant-id', 'x-api-key'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 PORT = int(os.getenv('PORT', 3005))
-single_machine_status_refresh_rate=5   # status refresh rate (seconds)
-
-@app.before_request
-def before_request():
-    time.sleep(single_machine_status_refresh_rate)
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
 API_KEY = os.getenv('API_KEY', 'your-secret-api-key')

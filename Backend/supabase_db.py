@@ -1,14 +1,26 @@
 import os
 from pathlib import Path
 from supabase import create_client, Client
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
+print(f"🔗 Supabase URL: {SUPABASE_URL[:30]}..." if SUPABASE_URL else "❌ No Supabase URL found")
+print(f"🔑 Supabase Key: {SUPABASE_KEY[:20]}..." if SUPABASE_KEY else "❌ No Supabase Key found")
+
 def get_supabase_client() -> Client:
-    url = SUPABASE_URL
-    key = SUPABASE_KEY
-    return create_client(url, key)
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise Exception("Missing Supabase credentials. Please check your .env file.")
+    
+    try:
+        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        return client
+    except Exception as e:
+        raise Exception(f"Failed to create Supabase client: {str(e)}")
 
 def get_inventory(machine_id: str):
     supabase = get_supabase_client()
