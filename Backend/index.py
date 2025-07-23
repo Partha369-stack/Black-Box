@@ -412,7 +412,7 @@ if __name__ == '__main__':
         print('--- PRODUCTION MODE: Running Flask app directly ---')
         print(f'--- PRODUCTION SERVER RUNNING ON PORT {PORT} ---')
         # Production: bind to 0.0.0.0 with reduced logging
-        socketio.run(app, host='0.0.0.0', port=PORT, debug=False, log_output=False)
+        socketio.run(app, host='0.0.0.0', port=PORT, debug=False, log_output=False, allow_unsafe_werkzeug=True)
     else:
         print('--- DEVELOPMENT SERVER RESTARTED ---')
         print(f'--- DEVELOPMENT SERVER RUNNING ON PORT {PORT} ---')
