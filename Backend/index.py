@@ -402,8 +402,21 @@ def health_check():
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 if __name__ == '__main__':
-    print('--- SERVER RESTARTED ---')
-    print(f'--- SERVER RUNNING ON PORT {PORT} ---')
-    socketio.run(app, port=PORT, debug=False, allow_unsafe_werkzeug=True)
+    # Determine if we're in a production environment
+    is_production = os.environ.get('RAILWAY_ENVIRONMENT') == 'production' or \
+                   os.environ.get('RENDER') or \
+                   os.environ.get('HEROKU_APP_NAME') or \
+                   os.environ.get('PORT')  # Railway sets PORT automatically
+    
+    if is_production:
+        print('--- PRODUCTION MODE: Running Flask app directly ---')
+        print(f'--- PRODUCTION SERVER RUNNING ON PORT {PORT} ---')
+        # Production: bind to 0.0.0.0 with reduced logging
+        socketio.run(app, host='0.0.0.0', port=PORT, debug=False, log_output=False)
+    else:
+        print('--- DEVELOPMENT SERVER RESTARTED ---')
+        print(f'--- DEVELOPMENT SERVER RUNNING ON PORT {PORT} ---')
+        # Development: bind to 0.0.0.0 with debug output
+        socketio.run(app, host='0.0.0.0', port=PORT, debug=True, allow_unsafe_werkzeug=True)
     
 
