@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QrCode, Download, Mail, CheckCircle, Loader2 } from 'lucide-react';
 import { customFetch } from '@/lib/api';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -131,6 +131,9 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
               <CheckCircle className="h-6 w-6 text-green-500" />
               <span>Payment Successful!</span>
             </DialogTitle>
+            <DialogDescription>
+              Your payment has been processed successfully. Here are your order details and receipt options.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
             <div className="text-center py-4">
@@ -162,28 +165,23 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
       <DialogContent
         className="sm:max-w-md"
-        aria-describedby="paymentDialogDescription"
         style={{ minHeight: 480 }}
       >
         <DialogHeader>
           <DialogTitle>Complete Payment</DialogTitle>
+          <DialogDescription>
+            {qrCodeUrl 
+              ? "Scan the QR code below with any UPI app to complete your payment securely."
+              : "Preparing your payment QR code..."}
+          </DialogDescription>
         </DialogHeader>
         
         {!qrCodeUrl && (
           <div className="space-y-4 mb-4">
-            <p className="text-muted-foreground text-center">
-              Preparing your payment QR code...
-            </p>
             <div className="flex justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
             </div>
           </div>
-        )}
-        
-        {qrCodeUrl && (
-          <p id="paymentDialogDescription" className="text-muted-foreground mb-4">
-            Scan the QR code below with any UPI app to complete your payment securely.
-          </p>
         )}
         <div className="text-center space-y-4" style={{ paddingTop: 32, paddingBottom: 32 }}>
           <div

@@ -43,7 +43,8 @@ export const Orders = () => {
       try {
         const response = await fetch('/api/orders', {
           headers: {
-            'X-Tenant-ID': machineId
+            'X-Tenant-ID': machineId,
+            'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
           }
         });
         const data = await response.json();
@@ -311,10 +312,13 @@ export const Orders = () => {
       </Card>
       {/* Order Detail Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent className="sm:max-w-lg bg-black text-white">
+        <DialogContent className="sm:max-w-lg bg-black text-white border-white/20" aria-describedby="order-details-description">
           <DialogHeader>
             <DialogTitle>Order Details</DialogTitle>
           </DialogHeader>
+          <div id="order-details-description" className="sr-only">
+            Detailed information about the selected order including items, status, and payment details
+          </div>
           {selectedOrder && (
             <div className="space-y-4">
               <div>

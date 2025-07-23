@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingCart, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 interface CartItem {
   id: string;
@@ -53,6 +53,9 @@ const Cart = ({ items, onRemoveItem, onCheckout }: CartProps) => {
       <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Your Order</SheetTitle>
+          <SheetDescription>
+            Review your selected items and proceed to checkout
+          </SheetDescription>
         </SheetHeader>
         
         <div className="mt-6 space-y-4">

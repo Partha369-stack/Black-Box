@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUploadZone } from "@/components/ui/ImageUploadZone";
 
 interface Product {
   id: string;
@@ -115,16 +116,24 @@ export const Inventory = () => {
 
   const updateStock = async (id: string, newQuantity: number) => {
     try {
-      const res = await fetch(`/api/inventory/${id}/quantity`, {
+      const apiKey = import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024';
+      console.log('🔑 API Key being used:', apiKey);
+      console.log('🔑 Environment VITE_API_KEY:', import.meta.env.VITE_API_KEY);
+      const headers = { 
+        'Content-Type': 'application/json',
+        'X-Tenant-ID': machineId,
+        'X-API-Key': apiKey
+      };
+      console.log('📡 Request headers:', headers);
+      const res = await fetch(`/api/inventory`, {
         method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Tenant-ID': machineId
-        },
-        body: JSON.stringify({ quantity: newQuantity })
+        headers,
+        body: JSON.stringify({ id, quantity: newQuantity })
       });
       const data = await res.json();
       if (data.success) {
+        // Refresh inventory to show updated stock
+        fetchInventory();
         toast({
           title: "Stock Updated",
           description: `Stock updated to ${newQuantity} units`,
@@ -147,20 +156,25 @@ export const Inventory = () => {
 
   const deleteProduct = async (id: string) => {
     try {
-      const res = await fetch(`/api/inventory/${id}`, {
+      const res = await fetch(`/api/inventory`, {
         method: 'DELETE',
         headers: { 
           'Content-Type': 'application/json',
-          'X-Tenant-ID': machineId
+          'X-Tenant-ID': machineId,
+          'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
         },
+        body: JSON.stringify({ id })
       });
       const data = await res.json();
       if (data.success) {
+        // Refresh inventory to remove deleted product from the list
+        fetchInventory();
         toast({
           title: "Product Deleted",
           description: "Product removed from inventory",
         });
       } else {
+        console.error('Delete failed:', data);
         toast({
           title: "Error",
           description: data.error || "Failed to delete product",
@@ -168,6 +182,7 @@ export const Inventory = () => {
         });
       }
     } catch (err: any) {
+      console.error('Delete error:', err);
       toast({
         title: "Error",
         description: "Failed to delete product",
@@ -193,7 +208,8 @@ export const Inventory = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'X-Tenant-ID': machineId
+          'X-Tenant-ID': machineId,
+          'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
         },
         body: JSON.stringify(payload)
       });
@@ -202,6 +218,8 @@ export const Inventory = () => {
       if (data.success) {
         setNewProduct({ name: "", price: 0, quantity: 0, category: "", slot: "", image: "/product_img/download.png", description: "" });
         setIsAddModalOpen(false);
+        // Refresh inventory to show new product
+        fetchInventory();
         toast({
           title: "Product Added",
           description: "New product added to inventory",
@@ -226,13 +244,15 @@ export const Inventory = () => {
     if (!editingProduct) return;
 
     try {
-      const res = await fetch(`/api/inventory/${editingProduct.id}`, {
+      const res = await fetch(`/api/inventory`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'X-Tenant-ID': machineId
+          'X-Tenant-ID': machineId,
+          'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
         },
         body: JSON.stringify({
+          id: editingProduct.id,
           name: editingProduct.name,
           price: editingProduct.price,
           category: editingProduct.category,
@@ -244,6 +264,8 @@ export const Inventory = () => {
       const data = await res.json();
       if (data.success) {
         setEditingProduct(null);
+        // Refresh inventory to show updated product
+        fetchInventory();
         toast({
           title: "Product Updated",
           description: "Product details updated successfully",
@@ -311,14 +333,15 @@ export const Inventory = () => {
     const formData = new FormData();
     formData.append("image", file);
     try {
-      const res = await fetch("/api/upload", {
+    const response = await fetch('http://localhost:3005/api/upload', {
         method: "POST",
         headers: {
-          'X-Tenant-ID': machineId
+          'X-Tenant-ID': machineId,
+          'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
         },
         body: formData,
       });
-      const data = await res.json();
+      const data = await response.json();
       if (data.success && data.path) {
         return data.path;
       }
@@ -358,7 +381,12 @@ export const Inventory = () => {
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg bg-black text-white border-white/20">
-              <DialogHeader><DialogTitle>Add New Product</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Add New Product</DialogTitle>
+                <DialogDescription>
+                  Form to add a new product to the inventory with image upload
+                </DialogDescription>
+              </DialogHeader>
               <form onSubmit={(e) => {
                 e.preventDefault();
                 addProduct();
@@ -461,40 +489,17 @@ export const Inventory = () => {
 
                 <div>
                   <Label htmlFor="image">Product Image *</Label>
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/png, image/jpeg, image/jpg"
-                    className={`bg-black text-white border-white/20 file:bg-white file:text-black file:border-0 file:rounded file:px-3 file:py-1 file:cursor-pointer ${errors.image ? 'border-red-500' : ''}`}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        if (file.size > 2 * 1024 * 1024) {
-                          setErrors(prev => ({ ...prev, image: 'Max file size is 2MB' }));
-                          return;
-                        }
-                        const path = await uploadProductImage(file);
-                        if (path) {
-                          setNewProduct((prev) => ({ ...prev, image: path }));
-                          setErrors(prev => ({ ...prev, image: '' }));
-                          toast({ title: "Image Uploaded", description: "Image uploaded successfully" });
-                        } else {
-                          setErrors(prev => ({ ...prev, image: 'Failed to upload image' }));
-                        }
-                      }
+                  <ImageUploadZone
+                    tenantId={machineId}
+                    currentImage={newProduct.image}
+                    onImageUpload={(path) => {
+                      setNewProduct((prev) => ({ ...prev, image: path }));
+                      setErrors(prev => ({ ...prev, image: '' }));
                     }}
+                    maxSize={5}
+                    className="mt-2"
                   />
                   {errors.image && <p className="text-red-500 text-xs mt-1">{errors.image}</p>}
-                  {newProduct.image && (
-                    <div className="mt-2">
-                      <p className="text-sm text-white/70 mb-1">Preview:</p>
-                      <img 
-                        src={getImageUrl(newProduct.image)} 
-                        alt="Preview" 
-                        className="w-20 h-20 object-cover border border-white/20 rounded" 
-                      />
-                    </div>
-                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit" className="flex-1">Add Product</Button>
@@ -733,13 +738,13 @@ export const Inventory = () => {
 
       {/* Edit Product Dialog */}
       <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
-        <DialogContent className="sm:max-w-lg bg-black text-white" aria-describedby="edit-product-description">
+        <DialogContent className="sm:max-w-lg bg-black text-white border-white/20">
           <DialogHeader>
             <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>
+              Form to edit an existing product in the inventory
+            </DialogDescription>
           </DialogHeader>
-          <div id="edit-product-description" className="sr-only">
-            Form to edit an existing product in the inventory
-          </div>
           {editingProduct && (
             <div className="space-y-4">              <div>
                 <Label htmlFor="edit-name">Product Name</Label>
@@ -803,31 +808,15 @@ export const Inventory = () => {
               </div>
               <div>
                 <Label htmlFor="edit-image">Product Image</Label>
-                <Input
-                  id="edit-image"
-                  type="file"
-                  accept="image/png, image/jpeg, image/jpg"
-                  className="bg-black text-white border-white/20"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      if (file.size > 2 * 1024 * 1024) {
-                        toast({ title: "Error", description: "Max file size is 2MB", variant: "destructive" });
-                        return;
-                      }
-                      const path = await uploadProductImage(file);
-                      if (path) {
-                        setEditingProduct((prev) => prev ? { ...prev, image: path } : null);
-                        toast({ title: "Image Uploaded", description: "Image uploaded successfully" });
-                      } else {
-                        toast({ title: "Error", description: "Image upload failed", variant: "destructive" });
-                      }
-                    }
+                <ImageUploadZone
+                  tenantId={machineId}
+                  currentImage={editingProduct?.image}
+                  onImageUpload={(path) => {
+                    setEditingProduct((prev) => prev ? { ...prev, image: path } : null);
                   }}
+                  maxSize={5}
+                  className="mt-2"
                 />
-                {editingProduct?.image && (
-                  <img src={getImageUrl(editingProduct.image)} alt="Preview" className="mt-2 w-20 h-20 object-cover border border-white/20 rounded" />
-                )}
               </div>
               <div className="flex gap-2">
                 <Button onClick={updateProduct} className="flex-1">Update Product</Button>
@@ -840,13 +829,13 @@ export const Inventory = () => {
 
       {/* Product Detail Dialog */}
       <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-        <DialogContent className="sm:max-w-lg bg-black text-white" aria-describedby="product-details-description">
+        <DialogContent className="sm:max-w-lg bg-black text-white border-white/20">
           <DialogHeader>
             <DialogTitle>Product Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about the selected product
+            </DialogDescription>
           </DialogHeader>
-          <div id="product-details-description" className="sr-only">
-            Detailed information about the selected product
-          </div>
           {selectedProduct && (
             <div className="space-y-4">
               <div className="flex items-center gap-4">

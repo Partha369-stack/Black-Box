@@ -16,6 +16,7 @@ export default defineConfig({
         target: 'http://localhost:3005',
         changeOrigin: true,
         secure: false,
+        // Removed verbose logging to reduce console noise
       },
     },
   },

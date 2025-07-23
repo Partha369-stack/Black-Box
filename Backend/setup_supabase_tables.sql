@@ -4,17 +4,27 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create inventory table
+-- Create products table (master product catalog)
+CREATE TABLE IF NOT EXISTS products (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    category VARCHAR(100),
+    stock INTEGER NOT NULL DEFAULT 0,
+    sku VARCHAR(100) UNIQUE,
+    image_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create inventory table (machine-specific inventory)
 CREATE TABLE IF NOT EXISTS inventory (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     machine_id VARCHAR(50) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL DEFAULT 0,
-    category VARCHAR(100),
     slot VARCHAR(20),
-    description TEXT,
-    image_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -35,7 +45,10 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 
 -- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
 CREATE INDEX IF NOT EXISTS idx_inventory_machine_id ON inventory(machine_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_product_id ON inventory(product_id);
 CREATE INDEX IF NOT EXISTS idx_orders_machine_id ON orders(machine_id);
 CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
@@ -49,7 +62,12 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Apply the trigger to both tables
+-- Apply the trigger to all tables
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
+CREATE TRIGGER update_products_updated_at 
+    BEFORE UPDATE ON products 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 DROP TRIGGER IF EXISTS update_inventory_updated_at ON inventory;
 CREATE TRIGGER update_inventory_updated_at 
     BEFORE UPDATE ON inventory 
@@ -58,7 +76,7 @@ CREATE TRIGGER update_inventory_updated_at
 DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
 CREATE TRIGGER update_orders_updated_at 
     BEFORE UPDATE ON orders 
-    FOR EACH ROW EXECUTE FUNCTION update_orders_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert some sample data for testing (optional)
 -- INSERT INTO inventory (machine_id, name, price, quantity, category, slot) VALUES

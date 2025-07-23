@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -36,11 +36,11 @@ export const CustomerInfoModal = ({ isOpen, onClose, onSubmit }: CustomerInfoMod
           <DialogTitle className="text-xl font-bold text-black dark:text-white">
             Customer Information
           </DialogTitle>
+          <DialogDescription className="text-gray-600 text-sm dark:text-white/70">
+            Please provide your details for better service and order tracking
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-gray-600 text-sm dark:text-white/70">
-            Please provide your details for better service and order tracking
-          </p>
           <div>
             <Label htmlFor="customerName" className="text-black dark:text-white">Your Name *</Label>
             <Input

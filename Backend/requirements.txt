@@ -9,4 +9,5 @@ python-socketio==5.9.0
 eventlet==0.33.3
 supabase==2.16.0
 python-dotenv==1.0.0
-websockets==11.0.3  # Add this line
+websockets==11.0.3
+Pillow==10.0.1

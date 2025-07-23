@@ -68,7 +68,8 @@ export const Dashboard = () => {
     try {
       const res = await fetch("/api/orders", {
         headers: {
-          'X-Tenant-ID': machineId
+          'X-Tenant-ID': machineId,
+          'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
         }
       });
 
@@ -214,7 +215,6 @@ export const Dashboard = () => {
       if (!isMounted) return;
 
       try {
-        console.log(`[${new Date().toISOString()}] Fetching machine status for ${machineId}...`);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
@@ -237,7 +237,6 @@ export const Dashboard = () => {
         }
 
         const data = await res.json();
-        console.log(`[Dashboard] Received machine status data for ${machineId}:`, data); // Add logging
 
         if (!isMounted) return;
 
@@ -251,7 +250,6 @@ export const Dashboard = () => {
           error: null
         };
 
-        console.log('[Status Update]', statusUpdate);
 
         // If we were previously offline and now online, show a success message
         if (machineStatus.status === 'offline' && statusUpdate.status === 'online') {
@@ -303,8 +301,8 @@ export const Dashboard = () => {
     // Initial fetch
     fetchStatus();
 
-    // Set up polling (every 30 seconds when online, every 10 seconds when offline)
-    const interval = setInterval(fetchStatus, machineStatus.status === 'online' ? 30000 : 10000);
+    // Set up polling (every 60 seconds when online, every 30 seconds when offline)
+    const interval = setInterval(fetchStatus, machineStatus.status === 'online' ? 60000 : 30000);
 
     // Cleanup
     return () => {
@@ -573,10 +571,13 @@ export const Dashboard = () => {
           </Card>
           {/* Order Detail Dialog */}
           <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-            <DialogContent className="sm:max-w-lg bg-black text-white">
+            <DialogContent className="sm:max-w-lg bg-black text-white border-white/20" aria-describedby="dashboard-order-details-description">
               <DialogHeader>
                 <DialogTitle>Order Details</DialogTitle>
               </DialogHeader>
+              <div id="dashboard-order-details-description" className="sr-only">
+                Detailed view of the selected order from the recent orders list
+              </div>
               {selectedOrder && (
                 <div className="space-y-4">
                   <div>

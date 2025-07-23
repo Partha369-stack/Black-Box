@@ -100,7 +100,7 @@ export const AdminSidebar = ({ collapsed, onToggle, onSelectMachine, selectedMac
       fetchMachineStatuses().catch(error => {
         console.error('Error in periodic status check:', error);
       });
-    }, 30000);
+    }, 120000); // Check every 2 minutes instead of 30 seconds
 
     fetchMachineStatuses().catch(error => {
       console.error('Error in initial status check:', error);
