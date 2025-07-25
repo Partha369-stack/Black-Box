@@ -4,7 +4,7 @@ import { Search, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Calendar, Download, Filter } from "lucide-react";
+import { Calendar, Download, Filter, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -69,19 +69,28 @@ export const Orders = () => {
       const lowerSearchTerm = searchTerm.toLowerCase();
       const lowerCustomerSearch = customerSearch.toLowerCase();
 
-      const matchesStatus = statusFilter === "all" || order.paymentStatus === statusFilter;
-      
-      const matchesSearchTerm = !searchTerm || 
-        (order.orderId && order.orderId.toLowerCase().includes(lowerSearchTerm)) ||
-        order.items.some((item: any) => item.name.toLowerCase().includes(lowerSearchTerm));
+      // Handle both field name formats (snake_case and camelCase)
+      const paymentStatus = order.payment_status || order.paymentStatus;
+      const orderId = order.order_id || order.orderId;
+      const customerName = order.customer_name || order.customerName;
+      const customerPhone = order.customer_phone || order.customerPhone;
+      const createdAt = order.created_at || order.createdAt;
+
+      const matchesStatus = statusFilter === "all" || paymentStatus === statusFilter;
+
+      const matchesSearchTerm = !searchTerm ||
+        (orderId && orderId.toLowerCase().includes(lowerSearchTerm)) ||
+        (order.items && Array.isArray(order.items) && order.items.some((item: any) =>
+          item.name && item.name.toLowerCase().includes(lowerSearchTerm)
+        ));
 
       const matchesCustomer = !customerSearch ||
-        (order.customerName && order.customerName.toLowerCase().includes(lowerCustomerSearch));
-        
-      const matchesPhone = !phoneSearch ||
-        (order.customerPhone && order.customerPhone.includes(phoneSearch));
+        (customerName && customerName.toLowerCase().includes(lowerCustomerSearch));
 
-      const orderDate = new Date(order.createdAt);
+      const matchesPhone = !phoneSearch ||
+        (customerPhone && customerPhone.includes(phoneSearch));
+
+      const orderDate = new Date(createdAt);
       const matchesDate = !dateRange || !dateRange.from || (
         orderDate >= dateRange.from &&
         (!dateRange.to || orderDate <= dateRange.to)
@@ -89,7 +98,11 @@ export const Orders = () => {
 
       return matchesStatus && matchesSearchTerm && matchesCustomer && matchesPhone && matchesDate;
     })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt).getTime();
+      const dateB = new Date(b.created_at || b.createdAt).getTime();
+      return dateB - dateA; // Newest first
+    });
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -98,6 +111,10 @@ export const Orders = () => {
   const pagedOrders = sortedOrders.slice((page - 1) * pageSize, page * pageSize);
 
   const getStatusBadgeVariant = (status: string) => {
+    if (!status) {
+      return { variant: "secondary", className: "bg-secondary/20 hover:bg-secondary/30 text-white/60" };
+    }
+    
     switch (status.toLowerCase()) {
       case "paid": 
         return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-black font-bold" };
@@ -112,29 +129,131 @@ export const Orders = () => {
     }
   };
 
+  const downloadOrderSlip = (order: any) => {
+    const orderId = order.order_id || order.orderId || 'N/A';
+    const customerName = order.customer_name || order.customerName || 'Anonymous';
+    const customerPhone = order.customer_phone || order.customerPhone || 'Not provided';
+    const totalAmount = order.total_amount || order.totalAmount || 0;
+    const paymentStatus = order.payment_status || order.paymentStatus || 'unknown';
+    const createdAt = order.created_at || order.createdAt;
+    const vpa = order.payment_details?.vpa || order.vpa || 'Not provided';
+    const paymentMethod = order.payment_details?.method || order.payer_account_type || 'UPI';
+
+    // Calculate totals
+    const itemsTotal = order.items && Array.isArray(order.items) ?
+      order.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) : 0;
+    const totalQuantity = order.items && Array.isArray(order.items) ?
+      order.items.reduce((sum: number, item: any) => sum + item.quantity, 0) : 0;
+
+    // Create organized order slip content
+    const orderSlipContent = `
+╔═══════════════════════════════════════╗
+║                BLACK BOX              ║
+║           Smart Vending Machine       ║
+╚═══════════════════════════════════════╝
+
+┌─────────────────────────────────────────┐
+│ RECEIPT                                 │
+└─────────────────────────────────────────┘
+
+Order ID: ${orderId}
+Machine: ${machineId}
+Date: ${createdAt ? new Date(createdAt).toLocaleString() : 'N/A'}
+
+┌─────────────────────────────────────────┐
+│ CUSTOMER INFORMATION                    │
+└─────────────────────────────────────────┘
+Name: ${customerName}
+Phone: ${customerPhone}
+
+┌─────────────────────────────────────────┐
+│ ORDER DETAILS                           │
+└─────────────────────────────────────────┘
+${order.items && Array.isArray(order.items) ?
+  order.items.map((item: any, index: number) =>
+    `${(index + 1).toString().padStart(2, '0')}. ${item.name}
+    Qty: ${item.quantity} × ₹${item.price} = ₹${(item.price * item.quantity).toFixed(2)}`
+  ).join('\n\n') :
+  'No items found'
+}
+
+─────────────────────────────────────────
+SUMMARY:
+Total Items: ${totalQuantity}
+Subtotal: ₹${itemsTotal.toFixed(2)}
+${itemsTotal !== totalAmount ? `Taxes/Fees: ₹${(totalAmount - itemsTotal).toFixed(2)}` : ''}
+─────────────────────────────────────────
+TOTAL AMOUNT: ₹${totalAmount}
+─────────────────────────────────────────
+
+┌─────────────────────────────────────────┐
+│ PAYMENT INFORMATION                     │
+└─────────────────────────────────────────┘
+Status: ${paymentStatus.toUpperCase()}
+Method: ${paymentMethod}
+${vpa !== 'Not provided' ? `UPI ID: ${vpa}` : ''}
+${order.payment_details?.payment_id ? `Payment ID: ${order.payment_details.payment_id}` : ''}
+${order.payment_details?.upi_transaction_id ? `UPI Txn ID: ${order.payment_details.upi_transaction_id}` : ''}
+
+┌─────────────────────────────────────────┐
+│ THANK YOU FOR YOUR PURCHASE!            │
+│                                         │
+│ Visit us again soon at Black Box        │
+│ Smart Vending Machines                  │
+│                                         │
+│ For support: support@blackbox.com       │
+│ Website: www.blackbox.com               │
+└─────────────────────────────────────────┘
+
+Generated on: ${new Date().toLocaleString()}
+    `.trim();
+
+    // Create and download the file
+    const blob = new Blob([orderSlipContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `BlackBox-Receipt-${orderId}-${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const exportToCSV = () => {
-    const headers = ["Order ID", "Customer", "Phone", "Items", "Quantity", "Total", "Status", "UPI VPA", "Account Type", "Timestamp"];
+    const headers = [
+      "Order ID",
+      "Customer Name",
+      "Phone",
+      "Items Detail",
+      "Total Quantity",
+      "Total Amount",
+      "Status",
+      "UPI VPA",
+      "Payment Method",
+      "Created At"
+    ];
+
     const csvContent = [
       headers.join(","),
       ...sortedOrders.map(order => [
-        order.orderId,
-        order.customerName || "Anonymous",
-        order.customerPhone || "Not provided",
-        `"${order.items.map((item: any) => item.name).join(", ")}"`,
-        order.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-        order.totalAmount,
-        order.paymentStatus,
-        order.vpa || "Not provided",
-        order.payer_account_type || "UPI",
-        order.createdAt ? new Date(order.createdAt).toLocaleString() : ""
+        order.order_id || order.orderId || 'N/A',
+        `"${order.customer_name || order.customerName || "Anonymous"}"`,
+        order.customer_phone || order.customerPhone || "Not provided",
+        `"${order.items?.map((item: any) => `${item.name} x${item.quantity} @₹${item.price}`).join("; ") || "No items"}"`,
+        order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0,
+        order.total_amount || order.totalAmount || 0,
+        order.payment_status || order.paymentStatus || 'unknown',
+        order.payment_details?.vpa || order.vpa || "Not provided",
+        order.payment_details?.method || order.payer_account_type || "UPI",
+        order.created_at ? new Date(order.created_at).toLocaleString() : 
+        order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'
       ].join(","))
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = "orders-export.csv";
+    a.download = `orders-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -251,52 +370,66 @@ export const Orders = () => {
               <TableBody>
                 {pagedOrders.map((order, index) => (
                   <TableRow
-                    key={order.orderId}
+                    key={order.order_id || order.orderId || `order-${index}`}
                     className={`hover:bg-white/5 cursor-pointer border-b border-white/5 ${index % 2 === 0 ? 'bg-white/2' : 'bg-black'}`}
                     onClick={() => setSelectedOrder(order)}
                   >
-                    <TableCell className="font-medium text-white border-r border-white/5">{order.orderId}</TableCell>
+                    <TableCell className="font-medium text-white border-r border-white/5">
+                      {order.order_id || order.orderId || 'N/A'}
+                    </TableCell>
                     <TableCell className="text-white/80 border-r border-white/5">
-                      {order.customerName ? (
-                        <span className="text-green-400 font-medium">{order.customerName}</span>
+                      {order.customer_name || order.customerName ? (
+                        <span className="text-green-400 font-medium">
+                          {order.customer_name || order.customerName}
+                        </span>
                       ) : (
                         <span className="text-white/40 text-xs">Anonymous</span>
                       )}
                     </TableCell>
                     <TableCell className="text-white/80 border-r border-white/5">
-                      {order.customerPhone ? (
-                        <span className="text-yellow-400 font-medium">{order.customerPhone}</span>
+                      {order.customer_phone || order.customerPhone ? (
+                        <span className="text-yellow-400 font-medium">
+                          {order.customer_phone || order.customerPhone}
+                        </span>
                       ) : (
                         <span className="text-white/40 text-xs">Not provided</span>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-xs truncate text-white/80 border-r border-white/5">{order.items.map((item: any) => item.name).join(", ")}</TableCell>
-                    <TableCell className="text-white/80 border-r border-white/5">{order.items.reduce((sum: number, item: any) => sum + item.quantity, 0)}</TableCell>
-                    <TableCell className="font-semibold text-white border-r border-white/5">₹{order.totalAmount}</TableCell>
+                    <TableCell className="max-w-xs truncate text-white/80 border-r border-white/5">
+                      {order.items?.map((item: any) => item.name).join(", ") || 'No items'}
+                    </TableCell>
+                    <TableCell className="text-white/80 border-r border-white/5">
+                      {order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0}
+                    </TableCell>
+                    <TableCell className="font-semibold text-white border-r border-white/5">
+                      ₹{order.total_amount || order.totalAmount || 0}
+                    </TableCell>
                     <TableCell className="border-r border-white/5">
                       <Badge 
-                        variant={getStatusBadgeVariant(order.paymentStatus).variant}
-                        className={getStatusBadgeVariant(order.paymentStatus).className}
+                        variant={getStatusBadgeVariant(order.payment_status || order.paymentStatus).variant}
+                        className={getStatusBadgeVariant(order.payment_status || order.paymentStatus).className}
                       >
-                        {order.paymentStatus}
+                        {order.payment_status || order.paymentStatus || 'unknown'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-white/80 border-r border-white/5">
-                      {order.vpa ? (
+                      {(order.payment_details?.vpa || order.vpa) ? (
                         <div className="text-xs">
-                          <div className="font-medium">{order.vpa}</div>
-                          <div className="text-white/60">{order.payer_account_type || 'UPI'}</div>
+                          <div className="font-medium">{order.payment_details?.vpa || order.vpa}</div>
+                          <div className="text-white/60">
+                            {order.payment_details?.method || order.payer_account_type || 'UPI'}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-white/40 text-xs">Not provided</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-white/60">
-                      {order.createdAt ? new Date(order.createdAt).toLocaleString() : ""}
+                      {order.created_at ? new Date(order.created_at).toLocaleString() : 
+                       order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
                     </TableCell>
                   </TableRow>
                 ))}
-
               </TableBody>
             </Table>
           </div>
@@ -314,7 +447,19 @@ export const Orders = () => {
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <DialogContent className="sm:max-w-lg bg-black text-white border-white/20" aria-describedby="order-details-description">
           <DialogHeader>
-            <DialogTitle>Order Details</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Order Details</DialogTitle>
+              {selectedOrder && (
+                <Button
+                  onClick={() => downloadOrderSlip(selectedOrder)}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Download Slip
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           <div id="order-details-description" className="sr-only">
             Detailed information about the selected order including items, status, and payment details
@@ -322,46 +467,70 @@ export const Orders = () => {
           {selectedOrder && (
             <div className="space-y-4">
               <div>
-                <span className="font-semibold">Order ID:</span> {selectedOrder.orderId}
+                <span className="font-semibold">Order ID:</span> {selectedOrder.order_id || selectedOrder.orderId || 'N/A'}
               </div>
               <div>
-                <span className="font-semibold">Status:</span> <Badge variant={getStatusBadgeVariant(selectedOrder.paymentStatus)}>{selectedOrder.paymentStatus}</Badge>
+                <span className="font-semibold">Status:</span>
+                <Badge
+                  variant={getStatusBadgeVariant(selectedOrder.payment_status || selectedOrder.paymentStatus).variant}
+                  className={getStatusBadgeVariant(selectedOrder.payment_status || selectedOrder.paymentStatus).className}
+                >
+                  {selectedOrder.payment_status || selectedOrder.paymentStatus || 'unknown'}
+                </Badge>
               </div>
               <div>
-                <span className="font-semibold">Total Amount:</span> ₹{selectedOrder.totalAmount}
+                <span className="font-semibold">Total Amount:</span> ₹{selectedOrder.total_amount || selectedOrder.totalAmount || 0}
               </div>
               <div>
-                <span className="font-semibold">Created At:</span> {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : ""}
+                <span className="font-semibold">Created At:</span> {
+                  selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString() :
+                  selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : 'N/A'
+                }
               </div>
               <div>
-                <span className="font-semibold">Updated At:</span> {selectedOrder.updatedAt ? new Date(selectedOrder.updatedAt).toLocaleString() : ""}
+                <span className="font-semibold">Updated At:</span> {
+                  selectedOrder.updated_at ? new Date(selectedOrder.updated_at).toLocaleString() :
+                  selectedOrder.updatedAt ? new Date(selectedOrder.updatedAt).toLocaleString() : 'N/A'
+                }
               </div>
               <div>
                 <span className="font-semibold">Items:</span>
                 <ul className="list-disc ml-6 mt-2">
-                  {selectedOrder.items.map((item: any) => (
-                    <li key={item.id}>
-                      {item.name} × {item.quantity} — ₹{item.price} each
-                    </li>
-                  ))}
+                  {selectedOrder.items && Array.isArray(selectedOrder.items) ?
+                    selectedOrder.items.map((item: any, idx: number) => (
+                      <li key={item.id || idx}>
+                        {item.name} × {item.quantity} — ₹{item.price} each
+                      </li>
+                    )) :
+                    <li>No items found</li>
+                  }
                 </ul>
               </div>
-              {selectedOrder.customerName && (
+              {(selectedOrder.customer_name || selectedOrder.customerName) && (
                 <div>
-                  <span className="font-semibold">Customer Name:</span> {selectedOrder.customerName}
+                  <span className="font-semibold">Customer Name:</span> {selectedOrder.customer_name || selectedOrder.customerName}
                 </div>
               )}
-              {selectedOrder.customerPhone && (
+              {(selectedOrder.customer_phone || selectedOrder.customerPhone) && (
                 <div>
-                  <span className="font-semibold">Phone Number:</span> {selectedOrder.customerPhone}
+                  <span className="font-semibold">Phone Number:</span> {selectedOrder.customer_phone || selectedOrder.customerPhone}
                 </div>
               )}
-              {selectedOrder.vpa && (
+              {(selectedOrder.payment_details?.vpa || selectedOrder.vpa) && (
                 <div>
                   <span className="font-semibold">UPI Payment Details:</span>
                   <div className="mt-2 p-3 bg-white/5 rounded-lg">
-                    <div><span className="text-white/70">VPA:</span> {selectedOrder.vpa}</div>
-                    <div><span className="text-white/70">Account Type:</span> {selectedOrder.payer_account_type || 'UPI'}</div>
+                    <div><span className="text-white/70">VPA:</span> {selectedOrder.payment_details?.vpa || selectedOrder.vpa}</div>
+                    <div><span className="text-white/70">Account Type:</span> {selectedOrder.payment_details?.method || selectedOrder.payer_account_type || 'UPI'}</div>
+                    {selectedOrder.payment_details?.payment_id && (
+                      <div><span className="text-white/70">Payment ID:</span> {selectedOrder.payment_details.payment_id}</div>
+                    )}
+                    {selectedOrder.payment_details?.bank_name && (
+                      <div><span className="text-white/70">Bank:</span> {selectedOrder.payment_details.bank_name}</div>
+                    )}
+                    {selectedOrder.payment_details?.upi_transaction_id && (
+                      <div><span className="text-white/70">UPI Transaction ID:</span> {selectedOrder.payment_details.upi_transaction_id}</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -372,3 +541,9 @@ export const Orders = () => {
     </div>
   );
 };
+
+
+
+
+
+

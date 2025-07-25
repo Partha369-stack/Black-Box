@@ -111,7 +111,11 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
       }
     }
     onClose();
-    window.location.reload(); // Refresh UI after closing
+    
+    // Refresh page after canceling order
+    if (orderId && paymentStatus !== 'success') {
+      window.location.reload();
+    }
   };
 
   if (paymentStatus === 'success') {
@@ -291,3 +295,4 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
 };
 
 export default PaymentModal;
+

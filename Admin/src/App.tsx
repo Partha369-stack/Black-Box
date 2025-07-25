@@ -12,7 +12,17 @@ import { Settings } from '@/pages/Settings';
 import { Sales } from '@/pages/Sales';
 import NotFound from '@/pages/NotFound';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Global defaults for better performance
+      staleTime: 30000, // 30 seconds
+      refetchOnWindowFocus: false,
+      retry: 2,
+      retryDelay: 1000,
+    },
+  },
+});
 
 function App() {
   const [collapsed, setCollapsed] = React.useState(false);

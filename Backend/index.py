@@ -1,3 +1,4 @@
+
 import os
 import json
 import uuid
@@ -21,7 +22,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('app.log'),
+        logging.FileHandler('app.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -42,14 +43,26 @@ try:
         delete_old_product_image, upload_image, validate_image_file,
         get_image_url
     )
-    logger.info("✅ Supabase connection established successfully!")
+    logger.info("[SUCCESS] Supabase connection established successfully!")
 except Exception as e:
-    logger.error(f"❌ Failed to connect to Supabase: {e}")
+    logger.error(f"[ERROR] Failed to connect to Supabase: {e}")
     raise
 
 # Flask app setup
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:8000', 'http://localhost:8001', 'http://localhost:8081', 'http://localhost:8083'],
+# CORS configuration for production and development
+allowed_origins = [
+    'http://localhost:8000', 'http://localhost:8001', 'http://localhost:8081', 'http://localhost:8083',  # Development
+    'https://*.vercel.app',  # Vercel deployments
+    'https://*.netlify.app',  # Netlify deployments (if needed)
+]
+
+# Add custom domain if provided
+custom_frontend_url = os.environ.get('FRONTEND_URL')
+if custom_frontend_url:
+    allowed_origins.append(custom_frontend_url)
+
+CORS(app, origins=allowed_origins,
      supports_credentials=True,
      allow_headers=['Content-Type', 'Authorization', 'x-tenant-id', 'x-api-key', 'X-Tenant-ID', 'X-API-Key'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
@@ -58,7 +71,11 @@ PORT = int(os.getenv('PORT', 3005))
 RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
 API_KEY = os.getenv('API_KEY', 'blackbox-api-key-2024')
-logger.info(f"🔑 API Key loaded: {API_KEY[:10]}...{API_KEY[-4:] if len(API_KEY) > 14 else API_KEY}")
+print(f"[DEBUG] Raw API_KEY from env: '{API_KEY}'")
+print(f"[DEBUG] API_KEY length: {len(API_KEY) if API_KEY else 'None'}")
+print(f"[DEBUG] Expected key: 'blackbox-api-key-2024'")
+print(f"[DEBUG] Keys match: {API_KEY == 'blackbox-api-key-2024'}")
+logger.info(f"[API_KEY] API Key loaded: {API_KEY[:10]}...{API_KEY[-4:] if len(API_KEY) > 14 else API_KEY}")
 
 # Flask app configuration
 app.config.update(
@@ -83,14 +100,6 @@ def tenant_db_middleware():
         resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, x-tenant-id, x-api-key, X-Tenant-ID, X-API-Key'
         resp.headers['Access-Control-Max-Age'] = '86400'
         return resp
-    
-    # API Key validation for sensitive operations
-    if request.path.startswith('/api') and request.method != 'GET':
-        # Check both lowercase and uppercase variants
-        api_key = request.headers.get('x-api-key') or request.headers.get('X-API-Key')
-        if not api_key or api_key != API_KEY:
-            logger.warning(f"Invalid API key attempt from {request.remote_addr} for {request.path}")
-            return jsonify({'error': 'Invalid or missing API key'}), 401
     
     # Skip tenant ID check for certain endpoints
     excluded_paths = ['/api/machine/status', '/api/health', '/api/logs']
@@ -197,13 +206,25 @@ def inventory():
         current_product = get_single_product(tenant_id, item_id)
         if current_product:
             old_image_url = current_product.get('image', '')
+            logger.info(f"Current product image: {old_image_url}")
 
             # Update product
             result = update_inventory(tenant_id, item_id, updates)
 
             # If new image URL differs from the current, delete old image
-            if 'image' in updates and updates['image'] != old_image_url:
-                delete_old_product_image(old_image_url)
+            if 'image' in updates and updates['image'] != old_image_url and old_image_url:
+                logger.info(f"Deleting old image: {old_image_url}")
+                logger.info(f"New image: {updates['image']}")
+
+                # Don't delete default images
+                if not old_image_url.endswith('/product_img/download.png') and '/product-images/' in old_image_url:
+                    deletion_success = delete_old_product_image(old_image_url)
+                    if deletion_success:
+                        logger.info(f"Successfully deleted old image: {old_image_url}")
+                    else:
+                        logger.warning(f"Failed to delete old image: {old_image_url}")
+                else:
+                    logger.info(f"Skipping deletion of default/local image: {old_image_url}")
 
             broadcast_inventory_update()
             return jsonify(result)
@@ -214,9 +235,71 @@ def inventory():
         item_id = request.json.get('id')
         if not item_id:
             return jsonify({'error': 'Item ID is required for delete'}), 400
-        result = delete_inventory_item(tenant_id, item_id)
+
+        # Get product data before deletion to clean up image
+        current_product = get_single_product(tenant_id, item_id)
+        if current_product:
+            old_image_url = current_product.get('image', '')
+
+            # Delete the product from database
+            result = delete_inventory_item(tenant_id, item_id)
+
+            # If deletion was successful, also delete the image
+            if result.get('success') and old_image_url:
+                # Don't delete default images
+                if not old_image_url.endswith('/product_img/download.png') and '/product-images/' in old_image_url:
+                    deletion_success = delete_old_product_image(old_image_url)
+                    if deletion_success:
+                        logger.info(f"Successfully deleted image for deleted product: {old_image_url}")
+                    else:
+                        logger.warning(f"Failed to delete image for deleted product: {old_image_url}")
+
+            broadcast_inventory_update()
+            return jsonify(result)
+        else:
+            return jsonify({'error': 'Product not found'}), 404
+
+@app.route('/api/inventory/init', methods=['GET'])
+def init_inventory():
+    tenant_id = request.headers.get('x-tenant-id') or request.headers.get('X-Tenant-ID')
+    if not tenant_id:
+        return jsonify({'error': 'Tenant ID is required'}), 400
+
+    try:
+        # Check if inventory already exists
+        existing_inventory = get_inventory(tenant_id)
+        if existing_inventory.get('inventory') and len(existing_inventory['inventory']) > 0:
+            return jsonify({
+                'success': True, 
+                'message': 'Inventory already exists', 
+                'inventory': existing_inventory['inventory']
+            })
+
+        # Default inventory items
+        default_inventory = [
+            {"id": "0", "name": "Test Product", "price": 1, "quantity": 100, "category": "Test", "slot": "A1", "image": "/product_img/download.png", "description": "A test product for 1 Rs"},
+            {"id": "1", "name": "Classic Chips", "price": 25, "quantity": 15, "category": "Snacks", "slot": "A2", "image": "/product_img/1cb22c3bb69c63b305b98a758709ce74.jpg", "description": "Crispy potato chips with a classic flavor"},
+            {"id": "18", "name": "Water Bottle", "price": 20, "quantity": 40, "category": "Water", "slot": "G1", "image": "/product_img/e9280a387e8049210642406c032b6a60.jpg", "description": "Purified drinking water"}
+        ]
+        
+        # Add each item to inventory
+        for item in default_inventory:
+            add_inventory(tenant_id, item)
+        
         broadcast_inventory_update()
-        return jsonify(result)
+        return jsonify({
+            'success': True, 
+            'message': 'Inventory initialized with default products', 
+            'inventory': default_inventory
+        })
+        
+    except Exception as e:
+        logger.error(f"Error initializing inventory: {e}")
+        return jsonify({
+            'success': False, 
+            'error': 'Failed to initialize inventory', 
+            'details': str(e)
+        }), 500
 
 # Orders APIs
 @app.route('/api/orders', methods=['GET', 'POST'])
@@ -225,13 +308,9 @@ def orders():
     if not tenant_id:
         return jsonify({'error': 'Tenant ID is required'}), 400
 
-    # Validate API key for orders endpoint
-    api_key = request.headers.get('x-api-key')
-    if not api_key or api_key != API_KEY:
-        return jsonify({'error': 'Unauthorized - Invalid API key'}), 401
-
     if request.method == 'GET':
-        return jsonify(get_orders(tenant_id))
+        result = get_orders(tenant_id)
+        return jsonify(result)
 
     if request.method == 'POST':
         try:
@@ -239,19 +318,71 @@ def orders():
             if not order:
                 return jsonify({'success': False, 'error': 'No order data provided'}), 400
                 
-            is_valid, error_msg = validate_order_item(order)
-            if not is_valid:
-                return jsonify({'success': False, 'error': error_msg}), 400
-                
             logging.info(f"Processing order for tenant {tenant_id}: {order}")
+            
+            # Create order in database first
             result = add_order(tenant_id, order)
+            order_id = result['order_id']
+            
+            # Create Razorpay order
+            razorpay_order_data = {
+                'amount': int(order['totalAmount'] * 100),  # Convert to paise
+                'currency': 'INR',
+                'receipt': order_id,
+                'payment_capture': 1
+            }
+            
+            razorpay_response = requests.post(
+                f"{os.getenv('RAZORPAY_API_BASE_URL', 'https://api.razorpay.com/v1')}/orders",
+                json=razorpay_order_data,
+                auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
+            )
+            
+            if razorpay_response.status_code != 200:
+                raise Exception(f"Razorpay order creation failed: {razorpay_response.text}")
+            
+            razorpay_order = razorpay_response.json()
+            
+            # Create QR code
+            qr_data = {
+                'type': 'upi_qr',
+                'name': f'Order {order_id}',
+                'usage': 'single_use',
+                'fixed_amount': True,
+                'payment_amount': int(order['totalAmount'] * 100),
+                'description': f'Payment for order {order_id}',
+                'close_by': int(datetime.now().timestamp()) + 3600,  # 1 hour expiry
+                'notes': {
+                    'order_id': order_id,
+                    'machine_id': tenant_id
+                }
+            }
+            
+            qr_response = requests.post(
+                f"{os.getenv('RAZORPAY_API_BASE_URL', 'https://api.razorpay.com/v1')}/payments/qr_codes",
+                json=qr_data,
+                auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
+            )
+            
+            if qr_response.status_code != 200:
+                raise Exception(f"Razorpay QR creation failed: {qr_response.text}")
+            
+            qr_code = qr_response.json()
+            
             broadcast_orders_update()
             
-            return jsonify({'success': True, 'order': result})
+            return jsonify({
+                'success': True,
+                'orderId': order_id,
+                'qrCodeUrl': qr_code['image_url'],
+                'qrCodeId': qr_code['id'],
+                'razorpayOrderId': razorpay_order['id'],
+                'order': result
+            })
+            
         except Exception as e:
-            error_msg = str(e)
-            logging.error(f"Orders POST error for tenant {tenant_id}: {error_msg}")
-            return jsonify({'success': False, 'error': 'Failed to process order'}), 500
+            logging.error(f"Order creation error: {str(e)}")
+            return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/orders/<order_id>', methods=['GET'])
 def get_order_route(order_id):
@@ -305,6 +436,154 @@ def update_order_status(order_id):
     except Exception as e:
         logging.error(str(e))
         return jsonify({'success': False, 'error': 'Failed to update status'}), 500
+
+# Payment verification endpoint
+@app.route('/api/verify-payment', methods=['POST'])
+def verify_payment():
+    tenant_id = request.headers.get('x-tenant-id')
+    if not tenant_id:
+        return jsonify({'error': 'Tenant ID is required'}), 400
+    
+    data = request.json
+    qr_code_id = data.get('qrCodeId')
+    
+    if not qr_code_id:
+        return jsonify({'success': False, 'error': 'QR Code ID is required'}), 400
+    
+    try:
+        # Check payment status with Razorpay
+        response = requests.get(
+            f"{os.getenv('RAZORPAY_API_BASE_URL', 'https://api.razorpay.com/v1')}/payments/qr_codes/{qr_code_id}/payments",
+            auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
+        )
+        
+        if response.status_code != 200:
+            return jsonify({'success': False, 'error': 'Failed to verify payment'})
+        
+        payment_data = response.json()
+        
+        # Check if any payment is captured
+        captured_payment = None
+        for payment in payment_data.get('items', []):
+            if payment.get('status') == 'captured':
+                captured_payment = payment
+                break
+        
+        if captured_payment:
+            # Update order in database
+            order_id = captured_payment.get('notes', {}).get('order_id')
+            if order_id:
+                payment_details = {
+                    'payment_status': 'paid',
+                    'updated_at': datetime.now().isoformat(),
+                    'payment_details': {
+                        'payment_id': captured_payment['id'],
+                        'amount': captured_payment['amount'],
+                        'method': captured_payment.get('method', 'upi'),
+                        'vpa': captured_payment.get('vpa'),
+                        'captured_at': captured_payment.get('created_at')
+                    }
+                }
+                
+                update_order(tenant_id, order_id, payment_details)
+                broadcast_orders_update()
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Payment verified and order updated',
+                    'paymentDetails': payment_details['payment_details']
+                })
+        
+        return jsonify({'success': False, 'message': 'No captured payment found'})
+        
+    except Exception as e:
+        logging.error(f"Payment verification error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Cancel order endpoint
+@app.route('/api/orders/<order_id>/cancel', methods=['POST'])
+def cancel_order(order_id):
+    tenant_id = request.headers.get('x-tenant-id')
+    if not tenant_id:
+        return jsonify({'error': 'Tenant ID is required'}), 400
+    
+    try:
+        # Update order status to cancelled
+        cancel_data = {
+            'payment_status': 'cancelled',
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        update_order(tenant_id, order_id, cancel_data)
+        broadcast_orders_update()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Order {order_id} cancelled successfully'
+        })
+        
+    except Exception as e:
+        logging.error(f"Cancel order error: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to cancel order'}), 500
+
+# Dashboard aggregated data endpoint for better performance
+@app.route('/api/dashboard/stats', methods=['GET'])
+def get_dashboard_stats():
+    tenant_id = request.headers.get('x-tenant-id') or request.headers.get('X-Tenant-ID')
+    if not tenant_id:
+        return jsonify({'error': 'Tenant ID is required'}), 400
+
+    try:
+        # Get orders and inventory data
+        orders = get_orders(tenant_id)
+        inventory = get_inventory(tenant_id)
+
+        # Calculate basic stats without complex date parsing for now
+        total_orders = len(orders) if orders else 0
+        paid_orders = [o for o in orders if o.get('payment_status') == 'paid'] if orders else []
+        total_sales = sum(o.get('total_amount', 0) for o in paid_orders) if paid_orders else 0
+
+        # Simplified today's stats (just use recent orders for now)
+        orders_today = orders[-10:] if orders else []  # Last 10 orders as "today"
+        paid_orders_today = [o for o in orders_today if o.get('payment_status') == 'paid']
+        total_sales_today = sum(o.get('total_amount', 0) for o in paid_orders_today) if paid_orders_today else 0
+
+        # Inventory stats
+        inventory_list = inventory if inventory else []
+        low_stock_count = len([item for item in inventory_list if item.get('quantity', 0) <= 5])
+        critical_stock_count = len([item for item in inventory_list if item.get('quantity', 0) <= 2])
+        out_of_stock_count = len([item for item in inventory_list if item.get('quantity', 0) == 0])
+
+        # Recent orders (last 4, sorted by creation date)
+        if orders:
+            # Sort orders by created_at timestamp (newest first)
+            sorted_orders = sorted(orders, key=lambda x: x.get('created_at', ''), reverse=True)
+            recent_orders = sorted_orders[:4]  # Take first 4 (most recent)
+        else:
+            recent_orders = []
+
+        return jsonify({
+            'success': True,
+            'stats': {
+                'orders': {
+                    'total': total_orders,
+                    'today': len(orders_today),
+                    'total_sales': total_sales,
+                    'sales_today': total_sales_today
+                },
+                'inventory': {
+                    'total_items': len(inventory_list),
+                    'low_stock': low_stock_count,
+                    'critical_stock': critical_stock_count,
+                    'out_of_stock': out_of_stock_count
+                },
+                'recent_orders': recent_orders
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Dashboard stats error: {str(e)}")
+        return jsonify({'success': False, 'error': f'Failed to fetch dashboard stats: {str(e)}'}), 500
 
 # Upload
 @app.route('/api/upload', methods=['POST'])
@@ -373,14 +652,28 @@ def serve_image(tenant_id, filename):
 # Status
 @app.route('/api/machine/status', methods=['GET'])
 def get_status():
-    """Get machine status"""
-    return jsonify(single_machine)
+    """Get machine status - simulate online when admin UI is running"""
+    # Simulate machine being online when admin UI is accessing it
+    simulated_status = {
+        'id': single_machine['id'],
+        'status': 'online',
+        'lastHeartbeat': datetime.now().isoformat(),
+        'simulated': True  # Flag to indicate this is simulated
+    }
+    return jsonify(simulated_status)
 
 @app.route('/api/machine/status/<machine_id>', methods=['GET'])
 def get_machine_status(machine_id):
-    """Get status for a specific machine"""
-    if machine_id == single_machine['id']:
-        return jsonify(single_machine)
+    """Get status for a specific machine - simulate online when admin UI is running"""
+    # Support multiple machines (VM-001, VM-002, etc.)
+    if machine_id in ['VM-001', 'VM-002']:
+        simulated_status = {
+            'id': machine_id,
+            'status': 'online',
+            'lastHeartbeat': datetime.now().isoformat(),
+            'simulated': True  # Flag to indicate this is simulated
+        }
+        return jsonify(simulated_status)
     return jsonify({'error': 'Machine not found'}), 404
 
 # Logs

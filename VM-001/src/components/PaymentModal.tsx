@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QrCode, Download, Mail, CheckCircle, Loader2 } from 'lucide-react';
 import { customFetch } from '@/lib/api';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,12 +44,18 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
 
   useEffect(() => {
     if (!imgLoaded || expired || paymentStatus === 'success' || !qrCodeId) return;
+    
     pollingRef.current = setInterval(async () => {
       try {
-        const response = await customFetch('/api/verify-payment', {
+        const response = await fetch('/api/verify-payment', {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-id': 'VM-001'
+          },
           body: JSON.stringify({ qrCodeId }),
         });
+        
         const data = await response.json();
         if (data.success) {
           setPaymentStatus('success');
@@ -57,11 +63,14 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
             clearInterval(pollingRef.current);
             pollingRef.current = null;
           }
+          // Clear cart after successful payment
+          // Add your cart clearing logic here
         }
       } catch (e) {
-        // Optionally handle error
+        console.error('Payment verification error:', e);
       }
-    }, 500); // 0.5 seconds
+    }, 2000); // Poll every 2 seconds
+    
     return () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
@@ -100,18 +109,33 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
 
   // Helper to handle modal close and cancel order if not paid
   const handleClose = async () => {
-    if (paymentStatus !== 'success' && orderId) {
+    // Cancel the order if it's still pending
+    if (orderId && paymentStatus !== 'success') {
       try {
-        await customFetch('/api/cancel-order', {
+        await fetch(`/api/orders/${orderId}/cancel`, {
           method: 'POST',
-          body: JSON.stringify({ orderId }),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-id': 'VM-001'
+          }
         });
-      } catch (e) {
-        // Optionally handle error
+      } catch (error) {
+        console.error('Failed to cancel order:', error);
       }
     }
+    
+    // Clear polling
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    
     onClose();
-    window.location.reload(); // Refresh UI after closing
+    
+    // Refresh page after canceling order
+    if (orderId && paymentStatus !== 'success') {
+      window.location.reload();
+    }
   };
 
   if (paymentStatus === 'success') {
@@ -131,6 +155,9 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
               <CheckCircle className="h-6 w-6 text-green-500" />
               <span>Payment Successful!</span>
             </DialogTitle>
+            <DialogDescription>
+              Your payment has been processed successfully. Here are your order details.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
             <div className="text-center py-4">
@@ -159,7 +186,11 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+    <Dialog open={isOpen} onOpenChange={(open) => { 
+      if (!open) {
+        handleClose(); // This will now refresh the page if order was cancelled
+      }
+    }}>
       <DialogContent
         className="sm:max-w-md"
         aria-describedby="paymentDialogDescription"
@@ -167,6 +198,11 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
       >
         <DialogHeader>
           <DialogTitle>Complete Payment</DialogTitle>
+          <DialogDescription>
+            {qrCodeUrl 
+              ? "Scan the QR code below with any UPI app to complete your payment securely."
+              : "Preparing your payment QR code..."}
+          </DialogDescription>
         </DialogHeader>
         
         {!qrCodeUrl && (
@@ -180,11 +216,6 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
           </div>
         )}
         
-        {qrCodeUrl && (
-          <p id="paymentDialogDescription" className="text-muted-foreground mb-4">
-            Scan the QR code below with any UPI app to complete your payment securely.
-          </p>
-        )}
         <div className="text-center space-y-4" style={{ paddingTop: 32, paddingBottom: 32 }}>
           <div
             style={{
@@ -293,3 +324,7 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
 };
 
 export default PaymentModal;
+
+
+
+

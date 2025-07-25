@@ -25,7 +25,7 @@ interface CartItem {
   image: string;
 }
 
-const MACHINE_ID = 'VM-002';
+const MACHINE_ID = 'VM-001';
 
 const Index = () => {
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -42,11 +42,14 @@ const Index = () => {
   // Fetch products from backend
   const fetchProducts = async () => {
     try {
-      const res = await customFetch(`/api/inventory`);
+      const res = await fetch(`/api/inventory`, {
+        headers: {
+          'x-tenant-id': MACHINE_ID
+        }
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
-        // Convert backend inventory format to UI product format
         const newProducts = data.inventory.map((item: any) => ({
           id: item.id,
           name: item.name,
@@ -55,21 +58,6 @@ const Index = () => {
           description: item.description,
           stock: item.quantity
         }));
-        
-        // Check for stock changes and show notifications
-        if (products.length > 0) {
-          newProducts.forEach((newProduct) => {
-            const oldProduct = products.find(p => p.id === newProduct.id);
-            if (oldProduct && newProduct.stock < oldProduct.stock) {
-              const sold = oldProduct.stock - newProduct.stock;
-              toast({
-                title: "Stock Updated",
-                description: `${sold} unit(s) of ${newProduct.name} sold. Stock: ${newProduct.stock}`,
-                duration: 3000,
-              });
-            }
-          });
-        }
         
         setProducts(newProducts);
       } else {
@@ -85,7 +73,12 @@ const Index = () => {
   // Initialize products if empty
   const initializeProducts = async () => {
     try {
-      const res = await customFetch("/api/inventory/init");
+      const res = await customFetch("/api/inventory/init", {
+        headers: {
+          'x-tenant-id': MACHINE_ID,
+          'x-api-key': 'blackbox-api-key-2024'
+        }
+      });
       const data = await res.json();
       if (data.success) {
         fetchProducts();
@@ -152,8 +145,12 @@ const Index = () => {
 
   const requestOrderAndQr = async (cartItems: any[], totalAmount: number, customerInfo?: { name: string; phone: string }) => {
     try {
-      const response = await customFetch('/api/orders', {
+      const response = await fetch('/api/orders', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': MACHINE_ID
+        },
         body: JSON.stringify({ 
           items: cartItems, 
           totalAmount,
@@ -161,6 +158,14 @@ const Index = () => {
           customerPhone: customerInfo?.phone || null,
         }),
       });
+      
+      if (!response.ok) {
+        console.error('Response status:', response.status);
+        const errorText = await response.text();
+        console.error('Response text:', errorText);
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
       const data = await response.json();
       setOrderId(data.orderId);
       setQrCodeUrl(data.qrCodeUrl);
@@ -170,6 +175,7 @@ const Index = () => {
         description: `Order ID: ${data.orderId}`,
       });
     } catch (error) {
+      console.error('Order error:', error);
       toast({
         title: "Order Failed",
         description: "Could not place order. Please try again.",
@@ -313,3 +319,13 @@ const Index = () => {
 };
 
 export default Index;
+
+
+
+
+
+
+
+
+
+

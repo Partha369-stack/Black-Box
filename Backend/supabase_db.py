@@ -64,23 +64,59 @@ def delete_inventory_item(machine_id: str, item_id: str):
 def get_orders(machine_id: str):
     """Get orders for a machine from orders table - ordered by created_at"""
     supabase = get_supabase_client()
-    response = supabase.table('orders').select('*').eq('machine_id', machine_id).order('created_at', desc=True).execute()
-    return {'success': True, 'orders': response.data}
+    try:
+        response = supabase.table('orders').select('*').eq('machine_id', machine_id).order('created_at', desc=True).execute()
+        return {'success': True, 'orders': response.data}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
 
 def add_order(machine_id: str, order: dict):
     supabase = get_supabase_client()
-    response = supabase.table('orders').insert({'machine_id': machine_id, **order}).execute()
-    return response.data
+    import uuid
+    from datetime import datetime
+    
+    # Generate a proper order ID
+    order_id = f"BB{int(datetime.now().timestamp() * 1000)}"
+    
+    # Use the correct column names for your orders table
+    order_data = {
+        'order_id': order_id,  # Use order_id instead of id
+        'machine_id': machine_id,
+        'items': order.get('items', []),
+        'total_amount': order.get('totalAmount', 0),
+        'payment_status': 'pending',
+        'customer_name': order.get('customerName'),
+        'customer_phone': order.get('customerPhone'),
+        'created_at': datetime.now().isoformat(),
+        'updated_at': datetime.now().isoformat()
+    }
+    
+    try:
+        response = supabase.table('orders').insert(order_data).execute()
+        
+        if response.data and len(response.data) > 0:
+            result = response.data[0]
+            return result
+        else:
+            raise Exception("Failed to create order in database - no data returned")
+    except Exception as e:
+        raise Exception(f"Database error while creating order: {str(e)}")
 
 def get_order(machine_id: str, order_id: str):
     supabase = get_supabase_client()
-    response = supabase.table('orders').select('*').eq('machine_id', machine_id).eq('id', order_id).execute()
-    return response.data
+    try:
+        response = supabase.table('orders').select('*').eq('machine_id', machine_id).eq('order_id', order_id).execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        raise Exception(f"Database error while fetching order: {str(e)}")
 
-def update_order(machine_id: str, order_id: str, updates: dict):
+def update_order(machine_id: str, order_id: str, update_data: dict):
     supabase = get_supabase_client()
-    response = supabase.table('orders').update(updates).eq('machine_id', machine_id).eq('id', order_id).execute()
-    return response.data
+    try:
+        response = supabase.table('orders').update(update_data).eq('machine_id', machine_id).eq('order_id', order_id).execute()
+        return response.data
+    except Exception as e:
+        raise Exception(f"Database error while updating order: {str(e)}")
 
 def create_storage_bucket_if_not_exists():
     """Create the product-images bucket if it doesn't exist"""
@@ -198,30 +234,51 @@ def get_image_url(machine_id: str, table_name: str, column_name: str, filename: 
 
 def delete_image(file_path: str):
     """Delete image from Supabase storage"""
+    print(f"DEBUG: delete_image called with file_path: {file_path}")
     supabase = get_supabase_client()
-    
+
     try:
+        print(f"DEBUG: Attempting to delete from Supabase storage: {file_path}")
         response = supabase.storage.from_("product-images").remove([file_path])
+        print(f"DEBUG: Supabase delete response: {response}")
         print(f"Successfully deleted image: {file_path}")
         return True
     except Exception as e:
-        print(f"Failed to delete image: {str(e)}")
+        print(f"ERROR: Failed to delete image {file_path}: {str(e)}")
+        import traceback
+        print(f"DEBUG: Full traceback: {traceback.format_exc()}")
         return False
 
 def delete_old_product_image(old_image_url: str):
     """Extract file path from image URL and delete the old image"""
-    if not old_image_url or '/product-images/' not in old_image_url:
+    print(f"DEBUG: Attempting to delete old image: {old_image_url}")
+
+    if not old_image_url:
+        print("DEBUG: No image URL provided")
         return False
-        
+
+    if '/product-images/' not in old_image_url:
+        print(f"DEBUG: URL does not contain '/product-images/': {old_image_url}")
+        return False
+
     try:
         # Extract the file path from the full URL
         # URL format: https://project.supabase.co/storage/v1/object/public/product-images/VM-001/Inventory/product_images/timestamp_filename.ext
+        print(f"DEBUG: Splitting URL: {old_image_url}")
         parts = old_image_url.split('/product-images/')
+        print(f"DEBUG: URL parts: {parts}")
+
         if len(parts) > 1:
             file_path = parts[1]  # Get everything after /product-images/
-            return delete_image(file_path)
+            print(f"DEBUG: Extracted file path: {file_path}")
+            result = delete_image(file_path)
+            print(f"DEBUG: Delete result: {result}")
+            return result
+        else:
+            print("DEBUG: Could not split URL properly")
+            return False
     except Exception as e:
-        print(f"Error extracting file path from URL {old_image_url}: {e}")
+        print(f"ERROR: Exception in delete_old_product_image: {str(e)}")
         return False
 
 def validate_image_file(file_data, max_size_mb=5):

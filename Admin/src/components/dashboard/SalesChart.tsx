@@ -1,7 +1,7 @@
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 
 const chartConfig = {
@@ -19,13 +19,13 @@ interface SalesChartProps {
   machineId: string;
 }
 
-export const SalesChart = ({ machineId }: SalesChartProps) => {
+const SalesChart = memo(({ machineId }: SalesChartProps) => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [range, setRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [mode, setMode] = useState<'sales' | 'count'>('sales');
   const wsRef = useRef<WebSocket | null>(null);
 
-  const fetchChartData = async () => {
+  const fetchChartData = useCallback(async () => {
     const res = await fetch("/api/orders", {
       headers: {
         'X-Tenant-ID': machineId
@@ -101,7 +101,7 @@ export const SalesChart = ({ machineId }: SalesChartProps) => {
         setChartData(salesByMonth);
       }
     }
-  };
+  }, [machineId, range]);
 
   useEffect(() => {
     fetchChartData();
@@ -118,8 +118,24 @@ export const SalesChart = ({ machineId }: SalesChartProps) => {
       wsRef.current?.close();
       wsRef.current = null;
     };
-    // eslint-disable-next-line
-  }, [range, mode, machineId]);
+  }, [range, mode, machineId, fetchChartData]);
+
+  // Memoized description to prevent unnecessary re-renders
+  const chartDescription = useMemo(() => {
+    if (range === 'weekly') return mode === 'sales' ? 'Sales performance over the last 7 days' : 'Order count over the last 7 days';
+    if (range === 'daily') return mode === 'sales' ? 'Sales by hour for today' : 'Order count by hour for today';
+    if (range === 'monthly') return mode === 'sales' ? 'Sales by month for the last year' : 'Order count by month for the last year';
+    return '';
+  }, [range, mode]);
+
+  // Memoized button handlers to prevent unnecessary re-renders
+  const handleRangeChange = useCallback((newRange: 'daily' | 'weekly' | 'monthly') => {
+    setRange(newRange);
+  }, []);
+
+  const handleModeChange = useCallback((newMode: 'sales' | 'count') => {
+    setMode(newMode);
+  }, []);
 
   return (
     <Card className="bg-black border-white/10 shadow-card">
@@ -130,17 +146,15 @@ export const SalesChart = ({ machineId }: SalesChartProps) => {
               Sales Trend
             </CardTitle>
             <p className="text-sm text-white/70">
-              {range === 'weekly' && (mode === 'sales' ? 'Sales performance over the last 7 days' : 'Order count over the last 7 days')}
-              {range === 'daily' && (mode === 'sales' ? 'Sales by hour for today' : 'Order count by hour for today')}
-              {range === 'monthly' && (mode === 'sales' ? 'Sales by month for the last year' : 'Order count by month for the last year')}
+              {chartDescription}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant={range === 'daily' ? 'default' : 'outline'} className={range === 'daily' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => setRange('daily')}>Daily</Button>
-            <Button size="sm" variant={range === 'weekly' ? 'default' : 'outline'} className={range === 'weekly' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => setRange('weekly')}>Weekly</Button>
-            <Button size="sm" variant={range === 'monthly' ? 'default' : 'outline'} className={range === 'monthly' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => setRange('monthly')}>Monthly</Button>
-            <Button size="sm" variant={mode === 'sales' ? 'default' : 'outline'} className={mode === 'sales' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => setMode('sales')}>Total Sales</Button>
-            <Button size="sm" variant={mode === 'count' ? 'default' : 'outline'} className={mode === 'count' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => setMode('count')}>Order Count</Button>
+            <Button size="sm" variant={range === 'daily' ? 'default' : 'outline'} className={range === 'daily' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => handleRangeChange('daily')}>Daily</Button>
+            <Button size="sm" variant={range === 'weekly' ? 'default' : 'outline'} className={range === 'weekly' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => handleRangeChange('weekly')}>Weekly</Button>
+            <Button size="sm" variant={range === 'monthly' ? 'default' : 'outline'} className={range === 'monthly' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => handleRangeChange('monthly')}>Monthly</Button>
+            <Button size="sm" variant={mode === 'sales' ? 'default' : 'outline'} className={mode === 'sales' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => handleModeChange('sales')}>Total Sales</Button>
+            <Button size="sm" variant={mode === 'count' ? 'default' : 'outline'} className={mode === 'count' ? 'bg-white text-black hover:text-black' : 'bg-black text-white border-white/20 hover:text-black'} onClick={() => handleModeChange('count')}>Order Count</Button>
           </div>
         </div>
       </CardHeader>
@@ -190,4 +204,8 @@ export const SalesChart = ({ machineId }: SalesChartProps) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+SalesChart.displayName = 'SalesChart';
+
+export { SalesChart };

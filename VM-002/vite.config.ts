@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
   base: '/vm-002/',
   server: {
     host: true,
-    port: 8083,
+    port: 8084,
     cors: true,
     // For ngrok hosting, add each new ngrok URL here as a string when you get a new one.
     // Example: 'xxxx-xxxx-xxxx.ngrok-free.app'
