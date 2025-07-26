@@ -941,6 +941,20 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
+@app.route('/api/test-simple', methods=['POST'])
+def test_simple():
+    """Ultra simple test endpoint"""
+    return jsonify({'success': True, 'message': 'Simple test works'})
+
+@app.route('/api/verify-payment-simple', methods=['POST'])
+def verify_payment_simple():
+    """Ultra simple payment verification"""
+    return jsonify({
+        'success': True,
+        'status': 'pending',
+        'message': 'Payment verification works'
+    })
+
 if __name__ == '__main__':
     # Determine if we're in a production environment
     is_production = os.environ.get('RAILWAY_ENVIRONMENT') == 'production' or \
