@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QR Display Comparison</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .comparison { display: flex; gap: 40px; justify-content: center; margin: 20px 0; }
+        .qr-demo { text-align: center; }
+        .qr-container-old { 
+            width: 300px; height: 300px; overflow: hidden; border-radius: 12px; 
+            background: #fff; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.08); margin: 0 auto 20px;
+        }
+        .qr-container-new { 
+            width: 300px; height: 500px; overflow: hidden; border-radius: 12px; 
+            background: #fff; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.08); margin: 0 auto 20px;
+        }
+        .qr-img-old { width: 300px; height: 300px; object-fit: contain; object-position: center; display: block; }
+        .qr-img-new { width: 300px; height: 300px; object-fit: cover; object-position: center -230px; display: block; }
+        .label { font-weight: bold; margin-bottom: 10px; padding: 8px 16px; border-radius: 4px; }
+        .old-label { background: #f8d7da; color: #721c24; }
+        .new-label { background: #d4edda; color: #155724; }
+        .specs { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 QR Display Comparison: VM-001 vs VM-002</h1>
+        
+        <div class="comparison">
+            <div class="qr-demo">
+                <div class="label old-label">VM-001 (OLD - Before Fix)</div>
+                <div class="qr-container-old">
+                    <img src="https://via.placeholder.com/400x600/4CAF50/white?text=RAZORPAY+QR+CODE" 
+                         alt="Sample QR" class="qr-img-old" />
+                </div>
+                <div class="specs">
+                    Container: 300x300px<br>
+                    objectFit: contain<br>
+                    objectPosition: center<br>
+                    Result: Full QR visible
+                </div>
+            </div>
+
+            <div class="qr-demo">
+                <div class="label new-label">VM-001 (NEW - After Fix) = VM-002</div>
+                <div class="qr-container-new">
+                    <img src="https://via.placeholder.com/400x600/4CAF50/white?text=RAZORPAY+QR+CODE" 
+                         alt="Sample QR" class="qr-img-new" />
+                </div>
+                <div class="specs">
+                    Container: 300x500px<br>
+                    objectFit: cover<br>
+                    objectPosition: center -230px<br>
+                    Result: Cropped QR (branding hidden)
+                </div>
+            </div>
+        </div>
+
+        <div style="background: #e9ecef; padding: 20px; border-radius: 8px; margin-top: 30px;">
+            <h3>🔧 Changes Applied to VM-001:</h3>
+            <ul>
+                <li><strong>Container Height:</strong> 300px → 500px (taller container)</li>
+                <li><strong>Object Fit:</strong> 'contain' → 'cover' (crops instead of fitting)</li>
+                <li><strong>Object Position:</strong> 'center' → 'center -230px' (shifts image up to hide branding)</li>
+            </ul>
+            
+            <h3>✅ Result:</h3>
+            <p><strong>VM-001 QR display now matches VM-002 exactly!</strong></p>
+            <p>The QR code will be cropped to hide Razorpay branding at the bottom, showing only the scannable QR portion.</p>
+        </div>
+
+        <div style="background: #d1ecf1; padding: 20px; border-radius: 8px; margin-top: 20px;">
+            <h3>🧪 Test Your Changes:</h3>
+            <ol>
+                <li>Restart VM-001: <code>cd VM-001 && npm run dev</code></li>
+                <li>Visit: <code>http://localhost:8083/vm-001</code></li>
+                <li>Create an order and check QR display</li>
+                <li>Compare with VM-002 QR display</li>
+            </ol>
+            <p><strong>Both should now look identical!</strong></p>
+        </div>
+    </div>
+</body>
+</html>

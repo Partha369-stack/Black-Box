@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monitor Railway Deployment Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 8px; text-align: center; font-weight: bold; }
+        .status-checking { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .status-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .status-error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .log { background: #f8f9fa; padding: 15px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; border-radius: 4px; max-height: 400px; overflow-y: auto; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Railway Deployment Fix Monitor</h1>
+        <p>Monitoring Railway deployment after build configuration fixes...</p>
+
+        <div id="deploymentStatus" class="status status-checking">
+            🔄 Checking deployment status...
+        </div>
+
+        <button onclick="checkDeployment()">Check Now</button>
+        <button onclick="startMonitoring()">Start Auto-Monitor</button>
+        <button onclick="stopMonitoring()">Stop Monitor</button>
+
+        <div id="log" class="log"></div>
+
+        <div style="margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 4px;">
+            <h3>🔧 Build Fixes Applied:</h3>
+            <ul>
+                <li>✅ Removed problematic nixpacks.toml</li>
+                <li>✅ Updated railway.json to use 'python index.py'</li>
+                <li>✅ Updated Procfile to use simple Python command</li>
+                <li>✅ Added runtime.txt for Python 3.9</li>
+                <li>✅ Added start.sh as backup</li>
+            </ul>
+            
+            <h3>📋 What to Expect:</h3>
+            <ul>
+                <li><strong>✅ Success:</strong> Backend responds with updated code</li>
+                <li><strong>🔄 In Progress:</strong> Railway is still building/deploying</li>
+                <li><strong>❌ Error:</strong> Build still failing (may need manual intervention)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let monitorInterval = null;
+        let checkCount = 0;
+        const railwayUrl = 'https://black-box-production.up.railway.app';
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info';
+            logs.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function updateStatus(type, message) {
+            const statusDiv = document.getElementById('deploymentStatus');
+            statusDiv.className = `status status-${type}`;
+            statusDiv.innerHTML = message;
+        }
+
+        async function checkDeployment() {
+            checkCount++;
+            log(`🔍 Check #${checkCount}: Testing Railway backend...`, 'info');
+
+            try {
+                // Test health endpoint
+                const healthResponse = await fetch(`${railwayUrl}/api/health`, {
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+
+                if (!healthResponse.ok) {
+                    throw new Error(`Health check failed: HTTP ${healthResponse.status}`);
+                }
+
+                const healthData = await healthResponse.json();
+                log(`✅ Backend is responding: ${healthData.status}`, 'success');
+
+                // Test debug endpoint to check if new code is deployed
+                try {
+                    const debugResponse = await fetch(`${railwayUrl}/debug/razorpay`, {
+                        cache: 'no-cache',
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    });
+
+                    if (debugResponse.ok) {
+                        const debugData = await debugResponse.json();
+                        log('🔍 Debug endpoint found - NEW CODE DEPLOYED!', 'success');
+                        log(`🔑 Razorpay Key ID Set: ${debugData.razorpay_key_id_set ? '✅' : '❌'}`, debugData.razorpay_key_id_set ? 'success' : 'error');
+                        log(`🔐 Razorpay Secret Set: ${debugData.razorpay_secret_set ? '✅' : '❌'}`, debugData.razorpay_secret_set ? 'success' : 'error');
+
+                        if (debugData.razorpay_key_id_set && debugData.razorpay_secret_set) {
+                            updateStatus('success', '🎉 DEPLOYMENT SUCCESSFUL! Backend working with Razorpay credentials!');
+                            log('🎉 PERFECT! Railway has new code AND Razorpay credentials!', 'success');
+                            
+                            // Test QR generation
+                            await testQRGeneration();
+                            stopMonitoring();
+                        } else {
+                            updateStatus('warning', '⚠️ New code deployed but Razorpay credentials missing');
+                            log('⚠️ New code is deployed but Razorpay credentials are missing', 'warning');
+                            log('💡 Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Railway Variables', 'warning');
+                        }
+                    } else if (debugResponse.status === 404) {
+                        log('❌ Debug endpoint not found - OLD CODE still running', 'error');
+                        updateStatus('error', '❌ Old code still running - deployment may have failed');
+                    } else {
+                        log(`⚠️ Debug endpoint error: HTTP ${debugResponse.status}`, 'warning');
+                        updateStatus('warning', '⚠️ Deployment status unclear');
+                    }
+                } catch (debugError) {
+                    log(`⚠️ Could not check debug endpoint: ${debugError.message}`, 'warning');
+                    updateStatus('warning', '⚠️ Backend responding but deployment status unclear');
+                }
+
+            } catch (error) {
+                log(`❌ Backend not responding: ${error.message}`, 'error');
+                updateStatus('error', '❌ Backend not responding - deployment may be in progress');
+                log('💡 Railway might still be building/deploying. Wait 2-3 minutes and try again.', 'warning');
+            }
+        }
+
+        async function testQRGeneration() {
+            log('🧪 Testing QR generation...', 'info');
+            
+            const testOrder = {
+                items: [{ id: '1', name: 'Test Product', price: 25, quantity: 1 }],
+                totalAmount: 25,
+                customerName: 'Test Customer',
+                customerPhone: '9999999999'
+            };
+
+            try {
+                const response = await fetch(`${railwayUrl}/api/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': 'VM-001'
+                    },
+                    body: JSON.stringify(testOrder),
+                    cache: 'no-cache'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.qrCodeUrl) {
+                        if (data.qrCodeUrl.includes('rzp.io') || data.qrCodeUrl.includes('razorpay')) {
+                            log('🎉 SUCCESS: Real Razorpay QR code generated!', 'success');
+                            log(`🎯 QR URL: ${data.qrCodeUrl}`, 'success');
+                        } else {
+                            log('❌ Still generating placeholder QR codes', 'error');
+                        }
+                    } else {
+                        log(`❌ QR generation failed: ${data.error}`, 'error');
+                    }
+                } else {
+                    log(`❌ QR test failed: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ QR test error: ${error.message}`, 'error');
+            }
+        }
+
+        function startMonitoring() {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+            }
+            
+            log('🚀 Starting automatic monitoring every 30 seconds...', 'info');
+            updateStatus('checking', '🔄 Auto-monitoring deployment...');
+            
+            checkDeployment(); // Check immediately
+            monitorInterval = setInterval(checkDeployment, 30000); // Check every 30 seconds
+        }
+
+        function stopMonitoring() {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
+                log('⏹️ Stopped automatic monitoring', 'info');
+            }
+        }
+
+        // Auto-start monitoring when page loads
+        window.onload = function() {
+            log('🚀 Railway Deployment Fix Monitor started', 'info');
+            log('📝 Checking if Railway has deployed the fixed build configuration...', 'info');
+            setTimeout(startMonitoring, 1000);
+        };
+
+        // Stop monitoring when page is closed
+        window.onbeforeunload = function() {
+            stopMonitoring();
+        };
+    </script>
+</body>
+</html>

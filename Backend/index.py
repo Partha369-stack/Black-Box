@@ -704,15 +704,68 @@ def verify_payment():
 
 @app.route('/api/orders/<order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
-    """Cancel an order - simplified to avoid recursion"""
+    """Cancel an order and restore inventory"""
+    tenant_id = request.headers.get('x-tenant-id')
+    if not tenant_id:
+        return jsonify({'error': 'Tenant ID is required'}), 400
+
     try:
-        # Simple response for now
+        # Get the order first
+        order = get_order(tenant_id, order_id)
+        if not order:
+            return jsonify({
+                'success': False,
+                'error': 'Order not found'
+            }), 404
+
+        # Only cancel if order is still pending
+        if order.get('payment_status') != 'pending':
+            return jsonify({
+                'success': False,
+                'error': f'Cannot cancel order with status: {order.get("payment_status")}'
+            }), 400
+
+        # Restore inventory for each item
+        supabase = get_supabase_client()
+        for item in order.get('items', []):
+            try:
+                # Get current inventory
+                inv_response = supabase.table('inventory').select('quantity').eq('machine_id', tenant_id).eq('id', item['id']).execute()
+
+                if inv_response.data:
+                    current_quantity = inv_response.data[0]['quantity']
+                    new_quantity = current_quantity + item['quantity']
+
+                    # Update inventory
+                    supabase.table('inventory').update({
+                        'quantity': new_quantity,
+                        'updated_at': datetime.now().isoformat()
+                    }).eq('machine_id', tenant_id).eq('id', item['id']).execute()
+
+                    logging.info(f"Restored inventory for {item['id']}: {current_quantity} + {item['quantity']} = {new_quantity}")
+
+            except Exception as inv_error:
+                logging.error(f"Failed to restore inventory for item {item['id']}: {str(inv_error)}")
+
+        # Update order status to cancelled
+        update_order(tenant_id, order_id, {
+            'payment_status': 'cancelled',
+            'updated_at': datetime.now().isoformat()
+        })
+
+        # Broadcast updates
+        broadcast_orders_update()
+        broadcast_inventory_update()
+
+        logging.info(f"Order {order_id} cancelled successfully and inventory restored")
+
         return jsonify({
             'success': True,
-            'message': 'Order cancelled successfully'
+            'message': 'Order cancelled successfully and inventory restored'
         })
 
     except Exception as e:
+        logging.error(f"Error cancelling order {order_id}: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Failed to cancel order'

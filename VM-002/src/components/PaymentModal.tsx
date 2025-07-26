@@ -100,18 +100,30 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
 
   // Helper to handle modal close and cancel order if not paid
   const handleClose = async () => {
-    if (paymentStatus !== 'success' && orderId) {
+    // Cancel the order if it's still pending
+    if (orderId && paymentStatus !== 'success') {
       try {
-        await customFetch('/api/cancel-order', {
+        await fetch(`/api/orders/${orderId}/cancel`, {
           method: 'POST',
-          body: JSON.stringify({ orderId }),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-id': 'VM-002'
+          }
         });
-      } catch (e) {
-        // Optionally handle error
+        console.log(`Order ${orderId} cancelled successfully`);
+      } catch (error) {
+        console.error('Failed to cancel order:', error);
       }
     }
+
+    // Clear polling
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+
     onClose();
-    
+
     // Refresh page after canceling order
     if (orderId && paymentStatus !== 'success') {
       window.location.reload();
