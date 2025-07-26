@@ -1,16 +1,16 @@
 import * as React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from './components/ui/tooltip';
+import { Toaster } from './components/ui/toaster';
+import { Toaster as Sonner } from './components/ui/sonner';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Dashboard } from '@/pages/Dashboard';
-import { Orders } from '@/pages/Orders';
-import { Inventory } from '@/pages/Inventory';
-import { Settings } from '@/pages/Settings';
-import { Sales } from '@/pages/Sales';
-import NotFound from '@/pages/NotFound';
+import { AdminLayout } from './components/layout/AdminLayout';
+import { Dashboard } from './pages/Dashboard';
+import { Orders } from './pages/Orders';
+import { Inventory } from './pages/Inventory';
+import { Settings } from './pages/Settings';
+import { Sales } from './pages/Sales';
+import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient({
   defaultOptions: {

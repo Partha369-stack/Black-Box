@@ -8,10 +8,10 @@ console.warn = (...args) => {
   }
   originalWarn.apply(console, args);
 };
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../components/ui/chart";
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../components/ui/button";
 
 const chartConfig = {
   sales: {

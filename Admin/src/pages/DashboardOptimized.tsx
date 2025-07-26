@@ -1,22 +1,22 @@
 import { ShoppingCart, TrendingUp, Package, AlertTriangle, CheckCircle, Bell, User, X, Check } from "lucide-react";
-import { MetricCard } from "@/components/dashboard/MetricCard";
-import { SalesChart } from "@/components/dashboard/SalesChart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
+import { MetricCard } from "./components/dashboard/MetricCard";
+import { SalesChart } from "./components/dashboard/SalesChart";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
+import { ScrollArea } from "../components/ui/scroll-area";
+import { Button } from "../components/ui/button";
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { useToast } from "../hooks/use-toast";
+import { Switch } from "../components/ui/switch";
+import { Label } from "../components/ui/label";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { useOutletContext } from "react-router-dom";
-import { useDashboardStats, useOrders, useInventory } from "@/hooks/useDashboardData";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useDashboardStats, useOrders, useInventory } from "../hooks/useDashboardData";
+import { Skeleton } from "../components/ui/skeleton";
 
 interface OutletContext {
   machineId: string;

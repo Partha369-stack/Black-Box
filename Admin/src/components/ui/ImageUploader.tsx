@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '../hooks/use-toast';
 
 interface ImageUploaderProps {
   onUploadSuccess: (path: string) => void;

@@ -12,18 +12,18 @@ import {
   Bell,
   Menu
 } from 'lucide-react';
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/components/ui/use-toast";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "../lib/utils";
+import { Button } from "../components/ui/button";
+import { ScrollArea } from "../components/ui/scroll-area";
+import { useToast } from "../components/ui/use-toast";
+import { Badge } from "../components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import { PerformanceMonitor } from "@/components/PerformanceMonitor";
+} from "../components/ui/dropdown-menu";
+import { PerformanceMonitor } from "./components/PerformanceMonitor";
 
 interface AdminSidebarProps {
   collapsed: boolean;
