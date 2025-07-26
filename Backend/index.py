@@ -121,7 +121,7 @@ def tenant_db_middleware():
         return resp
     
     # Skip tenant ID check for certain endpoints
-    excluded_paths = ['/api/machine/status', '/api/health', '/api/logs']
+    excluded_paths = ['/api/machine/status', '/api/health', '/api/logs', '/api/razorpay/webhook']
     if request.path.startswith('/api') and not any(request.path.startswith(path) for path in excluded_paths):
         # Check both lowercase and uppercase variants
         tenant_id = request.headers.get('x-tenant-id') or request.headers.get('X-Tenant-ID')
