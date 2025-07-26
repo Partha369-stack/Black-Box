@@ -779,6 +779,7 @@ def update_order_status(order_id):
         return jsonify({'success': False, 'error': 'Failed to update status'}), 500
 
 # DUPLICATE REMOVED - Using the newer verify_payment function above
+# Force deployment refresh - duplicate function issue fixed
 
 # Cancel order endpoint
 @app.route('/api/orders/<order_id>/cancel', methods=['POST'])
