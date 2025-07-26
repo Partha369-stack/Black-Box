@@ -1037,13 +1037,19 @@ def health_check():
 # Debug endpoint to check Razorpay credentials
 @app.route('/api/debug/razorpay', methods=['GET'])
 def debug_razorpay():
-    """Debug endpoint to check Razorpay credentials"""
+    """Debug endpoint to check Razorpay credentials - UPDATED"""
+    # Force reload environment variables
+    razorpay_key_id = os.environ.get('RAZORPAY_KEY_ID')
+    razorpay_key_secret = os.environ.get('RAZORPAY_KEY_SECRET')
+
     return jsonify({
-        'razorpay_key_id_set': bool(RAZORPAY_KEY_ID),
-        'razorpay_key_id_value': RAZORPAY_KEY_ID[:8] + '...' if RAZORPAY_KEY_ID else 'NOT SET',
-        'razorpay_secret_set': bool(RAZORPAY_KEY_SECRET),
-        'razorpay_secret_value': RAZORPAY_KEY_SECRET[:8] + '...' if RAZORPAY_KEY_SECRET else 'NOT SET',
-        'environment': os.environ.get('RAILWAY_ENVIRONMENT', 'unknown')
+        'razorpay_key_id_set': bool(razorpay_key_id),
+        'razorpay_key_id_value': razorpay_key_id[:8] + '...' if razorpay_key_id else 'NOT SET',
+        'razorpay_secret_set': bool(razorpay_key_secret),
+        'razorpay_secret_value': razorpay_key_secret[:8] + '...' if razorpay_key_secret else 'NOT SET',
+        'environment': os.environ.get('RAILWAY_ENVIRONMENT', 'unknown'),
+        'all_env_vars': {k: v[:8] + '...' if len(str(v)) > 8 else str(v) for k, v in os.environ.items() if 'RAZORPAY' in k},
+        'timestamp': datetime.now().isoformat()
     })
 
 # Test QR code generation directly
