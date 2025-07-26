@@ -20,6 +20,16 @@ export default defineConfig(({ mode }) => ({
       '/api': 'https://black-box-production.up.railway.app',
     },
   },
+  preview: {
+    host: '0.0.0.0',
+    port: 4173,
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: 'terser',
+  },
   plugins: [
     react(),
     mode === 'development' &&
