@@ -1053,7 +1053,7 @@ def verify_payment_simple():
 def razorpay_webhook():
     """Handle Razorpay webhook notifications - MAIN PAYMENT VERIFICATION"""
     try:
-        logger.info("Razorpay webhook received")
+        logger.info("🔔 Razorpay webhook received")
 
         # Get webhook data
         webhook_data = request.get_json()
@@ -1062,10 +1062,10 @@ def razorpay_webhook():
             logger.error("No webhook data received")
             return jsonify({'error': 'No webhook data'}), 400
 
-        logger.info(f"Webhook event: {webhook_data.get('event')}")
-
-        # Extract event and payload
         event = webhook_data.get('event')
+        logger.info(f"📨 Webhook event: {event}")
+
+        # Extract payload
         payload = webhook_data.get('payload', {})
 
         # Handle QR Code Payment Events
