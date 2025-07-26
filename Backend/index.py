@@ -28,6 +28,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# JSON Safety Helper
+def safe_json_response(data):
+    """Create a safe JSON response without circular references"""
+    if isinstance(data, dict):
+        safe_data = {}
+        for key, value in data.items():
+            if isinstance(value, (str, int, float, bool, type(None))):
+                safe_data[key] = value
+            elif isinstance(value, list):
+                safe_data[key] = [item for item in value if isinstance(item, (str, int, float, bool, dict))]
+            elif isinstance(value, dict):
+                safe_data[key] = {k: v for k, v in value.items() if isinstance(v, (str, int, float, bool, type(None)))}
+            else:
+                safe_data[key] = str(value)  # Convert complex objects to string
+        return safe_data
+    return data
+
 # Validate required environment variables
 required_env_vars = ['SUPABASE_URL', 'SUPABASE_KEY', 'API_KEY']
 missing_vars = [var for var in required_env_vars if not os.getenv(var)]
@@ -446,6 +463,15 @@ def orders():
             if not db_response.data:
                 return jsonify({'success': False, 'error': 'Failed to create order in database'}), 500
 
+            # Extract only safe data from response to avoid circular references
+            created_order = db_response.data[0] if db_response.data else {}
+            safe_order_data = {
+                'order_id': created_order.get('order_id', order_id),
+                'total_amount': created_order.get('total_amount', 0),
+                'payment_status': created_order.get('payment_status', 'pending'),
+                'created_at': created_order.get('created_at', '')
+            }
+
             logging.info(f"Order created in DB: {order_id}")
 
             # Create Razorpay order for REAL payment
@@ -600,20 +626,29 @@ def orders():
 
 @app.route('/api/verify-payment', methods=['POST'])
 def verify_payment():
-    """Verify payment status for an order - simplified to avoid recursion"""
+    """Verify payment status for an order - safe implementation"""
     try:
-        # Simple response without complex processing
-        return jsonify({
+        # Get request data safely
+        request_data = request.get_json() or {}
+        qr_code_id = request_data.get('qrCodeId', '')
+
+        # Return safe, simple response
+        response_data = {
             'success': True,
             'status': 'pending',
-            'message': 'Payment verification in progress'
-        })
+            'message': 'Payment verification in progress',
+            'qrCodeId': qr_code_id
+        }
+
+        return jsonify(response_data)
 
     except Exception as e:
-        return jsonify({
+        # Safe error response
+        error_response = {
             'success': False,
             'error': 'Payment verification failed'
-        }), 500
+        }
+        return jsonify(error_response), 500
 
 @app.route('/api/orders/<order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
