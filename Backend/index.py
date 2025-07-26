@@ -1048,113 +1048,11 @@ def verify_payment_simple():
         'message': 'Payment verification works'
     })
 
-@app.route('/api/razorpay/webhook', methods=['POST'])
-def razorpay_webhook():
-    """Handle Razorpay webhook notifications - DEVELOPMENT VERSION"""
-    try:
-        logging.info("🔔 WEBHOOK RECEIVED!")
+# DUPLICATE WEBHOOK REMOVED
 
-        webhook_data = request.get_json() or {}
-        event = webhook_data.get('event', 'unknown')
+# Health check endpoint (duplicate removed)
 
-        logging.info(f"📨 Event: {event}")
-        logging.info(f"📦 Full payload: {webhook_data}")
-
-        if event == 'qr_code.credited':
-            payload = webhook_data.get('payload', {})
-            qr_entity = payload.get('qr_code', {}).get('entity', {})
-            payment_entity = payload.get('payment', {}).get('entity', {})
-
-            order_id = qr_entity.get('notes', {}).get('order_id', 'unknown')
-            payment_id = payment_entity.get('id', 'unknown')
-            amount = payment_entity.get('amount', 0) / 100
-
-            logging.info(f"💰 QR Payment: Order={order_id}, Payment={payment_id}, Amount=₹{amount}")
-            logging.info(f"✅ QR Payment processed successfully!")
-
-            return jsonify({
-                'success': True,
-                'message': 'QR payment processed',
-                'order_id': order_id,
-                'payment_id': payment_id,
-                'amount': amount
-            })
-
-        elif event == 'payment.captured':
-            payload = webhook_data.get('payload', {})
-            payment_entity = payload.get('payment', {}).get('entity', {})
-
-            order_id = payment_entity.get('notes', {}).get('order_id', 'unknown')
-            payment_id = payment_entity.get('id', 'unknown')
-            amount = payment_entity.get('amount', 0) / 100
-
-            logging.info(f"💳 Regular Payment: Order={order_id}, Payment={payment_id}, Amount=₹{amount}")
-            logging.info(f"✅ Regular payment processed successfully!")
-
-            return jsonify({
-                'success': True,
-                'message': 'Payment captured processed',
-                'order_id': order_id,
-                'payment_id': payment_id,
-                'amount': amount
-            })
-
-        elif event == 'payment.failed':
-            logging.info("❌ Payment failed event received")
-            return jsonify({'success': True, 'message': 'Payment failed processed'})
-
-        else:
-            logging.info(f"ℹ️ Other event: {event}")
-            return jsonify({'success': True, 'message': f'Event {event} received'})
-
-    except Exception as e:
-        logging.error(f"❌ Webhook error: {str(e)}")
-        return jsonify({'success': True, 'message': 'Webhook processed with error'})
-
-# Health check
-@app.route('/health')
-def health_check():
-    return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
-
-# DIRECT WEBHOOK ENDPOINT (BYPASS MIDDLEWARE)
-@app.route('/webhook/razorpay', methods=['POST'])
-def razorpay_webhook_direct():
-    """Direct Razorpay webhook endpoint - bypasses all middleware"""
-    try:
-        logger.info("🔔 DIRECT Razorpay webhook received")
-
-        # Get webhook data
-        webhook_data = request.get_json()
-
-        if not webhook_data:
-            logger.error("No webhook data received")
-            return jsonify({'error': 'No webhook data'}), 400
-
-        event = webhook_data.get('event')
-        logger.info(f"📨 Direct webhook event: {event}")
-
-        # Extract payload
-        payload = webhook_data.get('payload', {})
-
-        # Handle QR Code Payment Events
-        if event == 'qr_code.credited':
-            # QR Code payment received
-            qr_entity = payload.get('qr_code', {}).get('entity', {})
-            payment_entity = payload.get('payment', {}).get('entity', {})
-
-            order_id = qr_entity.get('notes', {}).get('order_id')
-            payment_id = payment_entity.get('id')
-            amount = payment_entity.get('amount', 0) / 100  # Convert from paise
-
-            logger.info(f"✅ DIRECT QR Payment - Order: {order_id}, Payment: {payment_id}, Amount: {amount}")
-
-            return jsonify({'success': True, 'message': 'Direct webhook processed successfully'})
-
-        return jsonify({'success': True, 'message': 'Direct webhook processed'})
-
-    except Exception as e:
-        logger.error(f"Direct webhook error: {str(e)}")
-        return jsonify({'error': 'Direct webhook failed'}), 500
+# WEBHOOK ENDPOINTS CLEANED - Only one webhook remains
 
 if __name__ == '__main__':
     # Determine if we're in a production environment
