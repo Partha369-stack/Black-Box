@@ -1034,10 +1034,10 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
-# Debug endpoint to check Razorpay credentials
-@app.route('/api/debug/razorpay', methods=['GET'])
-def debug_razorpay():
-    """Debug endpoint to check Razorpay credentials - UPDATED"""
+# Debug endpoint to check Razorpay credentials (NO TENANT REQUIRED)
+@app.route('/debug/razorpay', methods=['GET'])
+def debug_razorpay_public():
+    """Public debug endpoint to check Razorpay credentials - NO TENANT REQUIRED"""
     # Force reload environment variables
     razorpay_key_id = os.environ.get('RAZORPAY_KEY_ID')
     razorpay_key_secret = os.environ.get('RAZORPAY_KEY_SECRET')
@@ -1049,7 +1049,8 @@ def debug_razorpay():
         'razorpay_secret_value': razorpay_key_secret[:8] + '...' if razorpay_key_secret else 'NOT SET',
         'environment': os.environ.get('RAILWAY_ENVIRONMENT', 'unknown'),
         'all_env_vars': {k: v[:8] + '...' if len(str(v)) > 8 else str(v) for k, v in os.environ.items() if 'RAZORPAY' in k},
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'service_status': 'running'
     })
 
 # Test QR code generation directly
