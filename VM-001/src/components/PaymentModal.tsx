@@ -290,7 +290,7 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
                 <div
                   style={{
                     width: 300,
-                    height: 300,
+                    height: 500,
                     overflow: 'hidden',
                     borderRadius: 12,
                     margin: '0 auto',
@@ -307,8 +307,8 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
                     style={{
                       width: 300,
                       height: 300,
-                      objectFit: 'contain',
-                      objectPosition: 'center',
+                      objectFit: 'cover',
+                      objectPosition: 'center -230px',
                       display: 'block'
                     }}
                   />
