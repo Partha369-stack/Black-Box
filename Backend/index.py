@@ -356,6 +356,43 @@ def init_orders():
             'details': str(e)
         }), 500
 
+@app.route('/api/orders/test', methods=['POST'])
+def test_order_creation():
+    """Simple test endpoint for order creation without payment integration"""
+    tenant_id = request.headers.get('x-tenant-id') or request.headers.get('X-Tenant-ID')
+    if not tenant_id:
+        return jsonify({'error': 'Tenant ID is required'}), 400
+
+    try:
+        # Create a simple test order
+        test_order = {
+            'items': [{'id': '1', 'name': 'Test Product', 'price': 10, 'quantity': 1}],
+            'totalAmount': 10,
+            'customerName': 'Test Customer',
+            'customerPhone': '1234567890'
+        }
+
+        result = add_order(tenant_id, test_order)
+
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': 'Test order created successfully',
+                'orderId': result['order_id']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error')
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Test order creation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # Orders APIs
 @app.route('/api/orders', methods=['GET', 'POST'])
 def orders():
@@ -382,32 +419,36 @@ def orders():
             order = request.json
             if not order:
                 return jsonify({'success': False, 'error': 'No order data provided'}), 400
-                
-            logging.info(f"Processing order for tenant {tenant_id}: {order}")
-            
-            # Create order in database first
+
+            logging.info(f"Creating order for tenant {tenant_id}")
+
+            # Create order in database
             result = add_order(tenant_id, order)
 
             if not result.get('success'):
+                logging.error(f"Order creation failed: {result.get('error')}")
                 return jsonify({
                     'success': False,
                     'error': result.get('error', 'Failed to create order')
                 }), 500
 
             order_id = result['order_id']
-            
-            # For testing, skip Razorpay and return simple response
-            # TODO: Re-enable Razorpay integration after fixing recursion
+            logging.info(f"Order created successfully: {order_id}")
 
-            broadcast_orders_update()
+            # For now, return without Razorpay integration
+            # This allows order creation to work while we fix payment integration
+            try:
+                broadcast_orders_update()
+            except Exception as broadcast_error:
+                logging.warning(f"Broadcast failed: {broadcast_error}")
 
             return jsonify({
                 'success': True,
                 'orderId': order_id,
-                'qrCodeUrl': 'https://via.placeholder.com/200x200?text=QR+Code',  # Placeholder
-                'qrCodeId': 'test-qr-id',
-                'razorpayOrderId': 'test-razorpay-id',
-                'order': result.get('order')
+                'qrCodeUrl': 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=test-payment',
+                'qrCodeId': f'qr-{order_id}',
+                'razorpayOrderId': f'razorpay-{order_id}',
+                'message': 'Order created successfully (Payment integration coming soon)'
             })
 
             # Original Razorpay code (commented out for debugging):
