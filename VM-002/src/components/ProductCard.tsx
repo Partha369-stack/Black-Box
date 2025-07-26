@@ -20,8 +20,10 @@ interface ProductCardProps {
 }
 
 const getImageUrl = (image: string) => {
+  // For relative paths from the backend, prepend the backend URL.
+  // This now handles paths like '/<tenant-id>/Inventory/product_images/...'
   if (image && image.startsWith('/')) {
-    return `http://localhost:3005${image}`;
+    return `https://black-box-production.up.railway.app${image}`;
   }
   if (image && (image.startsWith('http://') || image.startsWith('https://')))
     return image;

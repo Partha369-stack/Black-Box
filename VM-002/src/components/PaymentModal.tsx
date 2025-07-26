@@ -40,6 +40,11 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
     setTimer(180); // Reset timer when QR code changes
     setExpired(false);
     setPaymentStatus('pending');
+
+    // Validate QR code URL on frontend as well
+    if (qrCodeUrl && !qrCodeUrl.includes('rzp.io') && !qrCodeUrl.includes('razorpay')) {
+      console.error('Invalid QR code URL detected:', qrCodeUrl);
+    }
   }, [qrCodeUrl]);
 
   useEffect(() => {

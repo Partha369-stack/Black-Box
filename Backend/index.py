@@ -19,7 +19,7 @@ load_dotenv()
 
 # Setup structured logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('app.log', encoding='utf-8'),
@@ -121,11 +121,21 @@ def tenant_db_middleware():
         return resp
     
     # Skip tenant ID check for certain endpoints
-    excluded_paths = ['/api/machine/status', '/api/health', '/api/logs', '/api/razorpay/webhook', '/razorpay-webhook']
-    if request.path.startswith('/api') and not any(request.path.startswith(path) for path in excluded_paths):
+    excluded_paths = ['/api/machine/status', '/api/health', '/api/logs', '/api/razorpay/webhook', '/razorpay-webhook', '/debug/razorpay', '/api/railway/test-razorpay', '/api/test/qr-generation']
+    
+    # Debug logging
+    logger.debug(f"Request path: {request.path}")
+    logger.debug(f"Excluded paths: {excluded_paths}")
+    
+    # Check if path should be excluded
+    is_excluded = any(request.path == path for path in excluded_paths)
+    logger.debug(f"Is excluded: {is_excluded}")
+    
+    if request.path.startswith('/api') and not is_excluded:
         # Check both lowercase and uppercase variants
         tenant_id = request.headers.get('x-tenant-id') or request.headers.get('X-Tenant-ID')
         if not tenant_id:
+            logger.error(f"Tenant ID required for path: {request.path}")
             return jsonify({'error': 'Tenant ID is required in headers as x-tenant-id'}), 400
         if not tenant_id.startswith('VM-'):
             logging.error(f'Invalid tenant ID: {tenant_id}')
@@ -488,6 +498,7 @@ def orders():
             try:
                 logging.info(f"🚀 Creating Razorpay order for amount: ₹{order['totalAmount']}")
 
+                # Create Razorpay order
                 razorpay_order_data = {
                     'amount': int(float(order['totalAmount']) * 100),  # Convert to paise
                     'currency': 'INR',
@@ -498,7 +509,7 @@ def orders():
                 logging.info(f"📤 Sending order data to Razorpay: {razorpay_order_data}")
 
                 razorpay_response = requests.post(
-                    'https://api.razorpay.com/v1/orders',
+                    f"{os.getenv('RAZORPAY_API_BASE_URL', 'https://api.razorpay.com/v1')}/orders",
                     json=razorpay_order_data,
                     auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
                     timeout=10
@@ -506,71 +517,71 @@ def orders():
 
                 logging.info(f"📥 Razorpay order response: Status {razorpay_response.status_code}")
 
-                if razorpay_response.status_code == 200:
-                    razorpay_order = razorpay_response.json()
-                    logging.info(f"✅ Razorpay order created: {razorpay_order['id']}")
+                if razorpay_response.status_code != 200:
+                    raise Exception(f"Razorpay order creation failed: {razorpay_response.text}")
 
-                    # Create QR code
-                    qr_data = {
-                        'type': 'upi_qr',
-                        'name': f'BlackBox Order {order_id}',
-                        'usage': 'single_use',
-                        'fixed_amount': True,
-                        'payment_amount': int(float(order['totalAmount']) * 100),
-                        'description': f'Payment for BlackBox order {order_id}',
-                        'close_by': int(datetime.now().timestamp()) + 3600,  # 1 hour expiry
-                        'notes': {
-                            'order_id': order_id,
-                            'machine_id': tenant_id,
-                            'customer_name': order.get('customerName', 'Unknown'),
-                            'customer_phone': order.get('customerPhone', 'Unknown')
-                        }
+                razorpay_order = razorpay_response.json()
+                logging.info(f"✅ Razorpay order created: {razorpay_order['id']}")
+
+                # Create QR code
+                qr_data = {
+                    'type': 'upi_qr',
+                    'name': f'BlackBox Order {order_id}',
+                    'usage': 'single_use',
+                    'fixed_amount': True,
+                    'payment_amount': int(float(order['totalAmount']) * 100),
+                    'description': f'Payment for BlackBox order {order_id}',
+                    'close_by': int(datetime.now().timestamp()) + 3600,  # 1 hour expiry
+                    'notes': {
+                        'order_id': order_id,
+                        'machine_id': tenant_id,
+                        'customer_name': order.get('customerName', 'Unknown'),
+                        'customer_phone': order.get('customerPhone', 'Unknown')
                     }
+                }
 
-                    logging.info(f"📤 Creating QR code with data: {qr_data}")
+                logging.info(f"📤 Creating QR code with data: {qr_data}")
 
-                    qr_response = requests.post(
-                        'https://api.razorpay.com/v1/payments/qr_codes',
-                        json=qr_data,
-                        auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
-                        timeout=10
-                    )
+                qr_response = requests.post(
+                    f"{os.getenv('RAZORPAY_API_BASE_URL', 'https://api.razorpay.com/v1')}/payments/qr_codes",
+                    json=qr_data,
+                    auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
+                    timeout=10
+                )
 
-                    logging.info(f"📥 QR code response: Status {qr_response.status_code}")
+                logging.info(f"📥 QR code response: Status {qr_response.status_code}")
 
-                    if qr_response.status_code == 200:
-                        qr_code = qr_response.json()
-                        logging.info(f"✅ QR code created successfully: {qr_code['id']}")
-                        logging.info(f"🎯 QR code image URL: {qr_code['image_url']}")
+                if qr_response.status_code != 200:
+                    raise Exception(f"Razorpay QR creation failed: {qr_response.text}")
 
-                        # Validate that this is a real Razorpay QR code
-                        qr_url = qr_code['image_url']
-                        if not (qr_url and ('rzp.io' in qr_url or 'razorpay' in qr_url)):
-                            logging.error(f"❌ Invalid QR code URL: {qr_url}")
-                            return jsonify({
-                                'success': False,
-                                'error': 'Invalid QR code generated. Only Razorpay QR codes are allowed.',
-                                'orderId': order_id
-                            }), 500
+                qr_code = qr_response.json()
+                logging.info(f"✅ QR code created successfully: {qr_code['id']}")
+                logging.info(f"🎯 QR code image URL: {qr_code['image_url']}")
 
-                        # Broadcast update
-                        try:
-                            broadcast_orders_update()
-                        except Exception as broadcast_error:
-                            logging.warning(f"Broadcast failed: {broadcast_error}")
+                # Validate that this is a real Razorpay QR code
+                qr_url = qr_code['image_url']
+                if not (qr_url and ('rzp.io' in qr_url or 'razorpay' in qr_url)):
+                    logging.error(f"❌ Invalid QR code URL: {qr_url}")
+                    return jsonify({
+                        'success': False,
+                        'error': 'Invalid QR code generated. Only Razorpay QR codes are allowed.',
+                        'orderId': order_id
+                    }), 500
 
-                        return jsonify({
-                            'success': True,
-                            'orderId': order_id,
-                            'qrCodeUrl': qr_code['image_url'],
-                            'qrCodeId': qr_code['id'],
-                            'razorpayOrderId': razorpay_order['id'],
-                            'message': 'Real Razorpay QR code generated successfully!'
-                        })
-                    else:
-                        logging.error(f"❌ QR creation failed: Status {qr_response.status_code}, Response: {qr_response.text}")
-                else:
-                    logging.error(f"❌ Razorpay order failed: Status {razorpay_response.status_code}, Response: {razorpay_response.text}")
+                # Broadcast update
+                try:
+                    broadcast_orders_update()
+                except Exception as broadcast_error:
+                    logging.warning(f"Broadcast failed: {broadcast_error}")
+
+                return jsonify({
+                    'success': True,
+                    'orderId': order_id,
+                    'qrCodeUrl': qr_code['image_url'],
+                    'qrCodeId': qr_code['id'],
+                    'razorpayOrderId': razorpay_order['id'],
+                    'message': 'Real Razorpay QR code generated successfully!'
+                })
 
             except requests.exceptions.Timeout:
                 logging.error("❌ Razorpay API timeout")
@@ -587,64 +598,6 @@ def orders():
                 'orderId': order_id,
                 'message': 'Order created but QR code generation failed'
             }), 500
-
-            # Original Razorpay code (commented out for debugging):
-            """
-            razorpay_order_data = {
-                'amount': int(order['totalAmount'] * 100),  # Convert to paise
-                'currency': 'INR',
-                'receipt': order_id,
-                'payment_capture': 1
-            }
-
-            razorpay_response = requests.post(
-                f"{os.getenv('RAZORPAY_API_BASE_URL', 'https://api.razorpay.com/v1')}/orders",
-                json=razorpay_order_data,
-                auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
-            )
-
-            if razorpay_response.status_code != 200:
-                raise Exception(f"Razorpay order creation failed: {razorpay_response.text}")
-
-            razorpay_order = razorpay_response.json()
-
-            # Create QR code
-            qr_data = {
-                'type': 'upi_qr',
-                'name': f'Order {order_id}',
-                'usage': 'single_use',
-                'fixed_amount': True,
-                'payment_amount': int(order['totalAmount'] * 100),
-                'description': f'Payment for order {order_id}',
-                'close_by': int(datetime.now().timestamp()) + 3600,  # 1 hour expiry
-                'notes': {
-                    'order_id': order_id,
-                    'machine_id': tenant_id
-                }
-            }
-
-            qr_response = requests.post(
-                f"{os.getenv('RAZORPAY_API_BASE_URL', 'https://api.razorpay.com/v1')}/payments/qr_codes",
-                json=qr_data,
-                auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
-            )
-
-            if qr_response.status_code != 200:
-                raise Exception(f"Razorpay QR creation failed: {qr_response.text}")
-
-            qr_code = qr_response.json()
-
-            broadcast_orders_update()
-
-            return jsonify({
-                'success': True,
-                'orderId': order_id,
-                'qrCodeUrl': qr_code['image_url'],
-                'qrCodeId': qr_code['id'],
-                'razorpayOrderId': razorpay_order['id'],
-                'order': result.get('order')
-            })
-            """
             
         except Exception as e:
             import traceback
@@ -1180,6 +1133,148 @@ def verify_payment_simple():
         'status': 'pending',
         'message': 'Payment verification works'
     })
+
+# Railway-specific Razorpay diagnostic endpoint
+@app.route('/api/railway/test-razorpay', methods=['GET'])
+def railway_test_razorpay():
+    """Test Razorpay API from Railway environment - NO TENANT REQUIRED"""
+    try:
+        logging.info("🚀 Railway Razorpay API Test Started")
+        
+        # Check environment variables
+        key_id = os.environ.get('RAZORPAY_KEY_ID')
+        key_secret = os.environ.get('RAZORPAY_KEY_SECRET')
+        
+        response_data = {
+            'environment': 'Railway',
+            'timestamp': datetime.now().isoformat(),
+            'key_id_available': bool(key_id),
+            'key_secret_available': bool(key_secret),
+            'key_id_prefix': key_id[:8] + '...' if key_id else 'NOT SET',
+            'tests': {}
+        }
+        
+        if not key_id or not key_secret:
+            response_data['error'] = 'Razorpay credentials not available in Railway environment'
+            response_data['tests']['credentials'] = 'FAILED'
+            return jsonify(response_data), 400
+        
+        # Test 1: Basic API connectivity
+        try:
+            auth_test = requests.get(
+                'https://api.razorpay.com/v1/payments',
+                auth=(key_id, key_secret),
+                timeout=10
+            )
+            
+            if auth_test.status_code == 200:
+                response_data['tests']['api_connectivity'] = 'PASSED'
+                logging.info("✅ Railway: API connectivity test passed")
+            elif auth_test.status_code == 401:
+                response_data['tests']['api_connectivity'] = 'FAILED - Invalid credentials'
+                response_data['error'] = 'Invalid Razorpay credentials'
+                return jsonify(response_data), 401
+            else:
+                response_data['tests']['api_connectivity'] = f'FAILED - Status {auth_test.status_code}'
+                
+        except requests.exceptions.Timeout:
+            response_data['tests']['api_connectivity'] = 'FAILED - Timeout'
+            response_data['error'] = 'Razorpay API timeout from Railway'
+            return jsonify(response_data), 500
+        except Exception as e:
+            response_data['tests']['api_connectivity'] = f'FAILED - {str(e)}'
+            response_data['error'] = f'Network error: {str(e)}'
+            return jsonify(response_data), 500
+        
+        # Test 2: Order creation
+        try:
+            test_order_data = {
+                'amount': 100,  # ₹1 in paise
+                'currency': 'INR',
+                'receipt': f'railway_test_{int(datetime.now().timestamp())}',
+                'payment_capture': 1
+            }
+            
+            order_test = requests.post(
+                'https://api.razorpay.com/v1/orders',
+                json=test_order_data,
+                auth=(key_id, key_secret),
+                timeout=15
+            )
+            
+            if order_test.status_code == 200:
+                order_result = order_test.json()
+                response_data['tests']['order_creation'] = 'PASSED'
+                response_data['test_order_id'] = order_result['id']
+                logging.info(f"✅ Railway: Order creation test passed - {order_result['id']}")
+                
+                # Test 3: QR Code creation
+                try:
+                    qr_test_data = {
+                        'type': 'upi_qr',
+                        'name': 'Railway Test QR',
+                        'usage': 'single_use',
+                        'fixed_amount': True,
+                        'payment_amount': 100,
+                        'description': 'Railway environment test',
+                        'close_by': int(datetime.now().timestamp()) + 3600,
+                        'notes': {
+                            'test': 'railway_environment',
+                            'timestamp': str(int(datetime.now().timestamp()))
+                        }
+                    }
+                    
+                    qr_test = requests.post(
+                        'https://api.razorpay.com/v1/payments/qr_codes',
+                        json=qr_test_data,
+                        auth=(key_id, key_secret),
+                        timeout=15
+                    )
+                    
+                    if qr_test.status_code == 200:
+                        qr_result = qr_test.json()
+                        response_data['tests']['qr_creation'] = 'PASSED'
+                        response_data['test_qr_id'] = qr_result['id']
+                        response_data['test_qr_url'] = qr_result['image_url']
+                        response_data['overall_status'] = 'ALL_TESTS_PASSED'
+                        logging.info(f"✅ Railway: QR creation test passed - {qr_result['id']}")
+                    else:
+                        response_data['tests']['qr_creation'] = f'FAILED - Status {qr_test.status_code}'
+                        response_data['qr_error'] = qr_test.text
+                        logging.error(f"❌ Railway: QR creation failed - {qr_test.text}")
+                        
+                except Exception as qr_error:
+                    response_data['tests']['qr_creation'] = f'FAILED - {str(qr_error)}'
+                    response_data['qr_error'] = str(qr_error)
+                    
+            else:
+                response_data['tests']['order_creation'] = f'FAILED - Status {order_test.status_code}'
+                response_data['order_error'] = order_test.text
+                logging.error(f"❌ Railway: Order creation failed - {order_test.text}")
+                
+        except Exception as order_error:
+            response_data['tests']['order_creation'] = f'FAILED - {str(order_error)}'
+            response_data['order_error'] = str(order_error)
+        
+        # Final assessment
+        if response_data['tests'].get('qr_creation') == 'PASSED':
+            response_data['recommendation'] = 'Your Razorpay integration should work properly from Railway'
+            response_data['status_code'] = 200
+        else:
+            response_data['recommendation'] = 'There are issues with Razorpay API from Railway environment'
+            response_data['status_code'] = 500
+            
+        logging.info(f"🏁 Railway Razorpay test completed: {response_data.get('overall_status', 'PARTIAL')}")
+        return jsonify(response_data), response_data.get('status_code', 200)
+        
+    except Exception as e:
+        logging.error(f"❌ Railway Razorpay test error: {str(e)}")
+        return jsonify({
+            'environment': 'Railway',
+            'error': f'Test failed with exception: {str(e)}',
+            'timestamp': datetime.now().isoformat(),
+            'recommendation': 'Check Railway logs for detailed error information'
+        }), 500
 
 # DUPLICATE WEBHOOK REMOVED
 
