@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { useToast } from '../hooks/use-toast';
-import { Progress } from '../components/ui/progress';
+import { Button } from './button';
+import { Card, CardContent } from './card';
+import { useToast } from '../../hooks/use-toast';
+import { Progress } from './progress';
 
 interface ImageUploadZoneProps {
   onImageUpload: (path: string) => void;

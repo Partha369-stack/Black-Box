@@ -1,7 +1,7 @@
 
 import { ShoppingCart, TrendingUp, Package, AlertTriangle, CheckCircle, Bell, User, X, Check } from "lucide-react";
-import { MetricCard } from "./components/dashboard/MetricCard";
-import { SalesChart } from "./components/dashboard/SalesChart";
+import { MetricCard } from "../components/dashboard/MetricCard";
+import { SalesChart } from "../components/dashboard/SalesChart";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from "../components/ui/dropdown-menu";
@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../hooks/use-toast";
 import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 import { useOutletContext } from "react-router-dom";
 
