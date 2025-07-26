@@ -12,10 +12,10 @@ import {
   Bell,
   Menu
 } from 'lucide-react';
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.ts";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
-import { useToast } from "../../hooks/use-toast";
+import { useToast } from "../../hooks/use-toast.ts";
 import { Badge } from "../ui/badge";
 import {
   DropdownMenu,
