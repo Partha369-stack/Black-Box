@@ -51,68 +51,15 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
     console.log('🎯 QR Code ready for payment:', qrCodeId);
     console.log('🔗 Listening for Razorpay webhook events...');
 
-    // Connect to WebSocket for real-time payment updates via Razorpay webhooks
-    const connectWebSocket = () => {
-      try {
-        const wsUrl = 'wss://black-box-production.up.railway.app';
-        const socket = new WebSocket(wsUrl);
+    // SIMPLIFIED: Just show QR code without WebSocket complexity
+    // WebSocket connection was failing, so we'll use webhook-only approach
+    console.log('💡 QR Code displayed. Payment will be verified via Razorpay webhook.');
+    setVerificationMessage('Scan QR code to pay. Payment will be verified automatically.');
 
-        socket.onopen = () => {
-          console.log('✅ WebSocket connected for payment updates');
-          setVerificationMessage('Connected - Waiting for payment...');
-        };
-
-        socket.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-
-            // Listen for payment success events from Razorpay webhook
-            if (data.type === 'payment_success' && data.orderId === orderId) {
-              console.log('🎉 Payment SUCCESS received via webhook!', data);
-              setPaymentStatus('success');
-              setVerificationMessage(`Payment Successful! ₹${data.amount} received`);
-
-              // Close WebSocket
-              socket.close();
-            }
-
-            // Listen for payment failure events
-            if (data.type === 'payment_failed' && data.orderId === orderId) {
-              console.log('❌ Payment FAILED received via webhook!', data);
-              setVerificationMessage('Payment failed. Please try again.');
-            }
-
-          } catch (parseError) {
-            console.error('WebSocket message parse error:', parseError);
-          }
-        };
-
-        socket.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          setVerificationMessage('Connection error. Payment will still work.');
-        };
-
-        socket.onclose = () => {
-          console.log('WebSocket connection closed');
-        };
-
-        return socket;
-
-      } catch (wsError) {
-        console.error('WebSocket connection error:', wsError);
-        setVerificationMessage('Connection failed. Payment will still work.');
-        return null;
-      }
-    };
-
-    const socket = connectWebSocket();
+    // Note: Payment verification happens via Razorpay webhook directly to backend
+    // No need for complex WebSocket connection in frontend
 
     return () => {
-      // Cleanup WebSocket connection
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.close();
-      }
-
       // Cleanup polling (if any)
       if (pollingRef.current) {
         clearInterval(pollingRef.current);

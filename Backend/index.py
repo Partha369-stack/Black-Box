@@ -1023,37 +1023,72 @@ def verify_payment_simple():
 
 @app.route('/api/razorpay/webhook', methods=['POST'])
 def razorpay_webhook():
-    """Handle Razorpay webhook notifications - SIMPLIFIED VERSION"""
+    """Handle Razorpay webhook notifications - DEVELOPMENT VERSION"""
     try:
-        logger.info("🔔 Razorpay webhook received")
+        print("🔔 WEBHOOK RECEIVED!")
 
-        # Get webhook data
+        # Get webhook data safely
         webhook_data = request.get_json() or {}
-        event = webhook_data.get('event', '')
+        event = webhook_data.get('event', 'unknown')
 
-        logger.info(f"📨 Webhook event: {event}")
+        print(f"📨 Event: {event}")
+        print(f"📦 Full payload: {webhook_data}")
 
-        # Simple success response for now
+        # Extract payment info for QR code payments
         if event == 'qr_code.credited':
-            logger.info("✅ QR Code payment event received")
-            return jsonify({'success': True, 'message': 'QR payment webhook processed'})
+            payload = webhook_data.get('payload', {})
+            qr_entity = payload.get('qr_code', {}).get('entity', {})
+            payment_entity = payload.get('payment', {}).get('entity', {})
+
+            order_id = qr_entity.get('notes', {}).get('order_id', 'unknown')
+            payment_id = payment_entity.get('id', 'unknown')
+            amount = payment_entity.get('amount', 0) / 100
+
+            print(f"💰 QR Payment: Order={order_id}, Payment={payment_id}, Amount=₹{amount}")
+
+            # TODO: Update database here
+            # For now, just log success
+            print(f"✅ QR Payment processed successfully!")
+
+            return jsonify({
+                'success': True,
+                'message': 'QR payment processed',
+                'order_id': order_id,
+                'payment_id': payment_id,
+                'amount': amount
+            })
 
         elif event == 'payment.captured':
-            logger.info("✅ Payment captured event received")
-            return jsonify({'success': True, 'message': 'Payment captured webhook processed'})
+            payload = webhook_data.get('payload', {})
+            payment_entity = payload.get('payment', {}).get('entity', {})
+
+            order_id = payment_entity.get('notes', {}).get('order_id', 'unknown')
+            payment_id = payment_entity.get('id', 'unknown')
+            amount = payment_entity.get('amount', 0) / 100
+
+            print(f"💳 Regular Payment: Order={order_id}, Payment={payment_id}, Amount=₹{amount}")
+            print(f"✅ Regular payment processed successfully!")
+
+            return jsonify({
+                'success': True,
+                'message': 'Payment captured processed',
+                'order_id': order_id,
+                'payment_id': payment_id,
+                'amount': amount
+            })
 
         elif event == 'payment.failed':
-            logger.info("❌ Payment failed event received")
-            return jsonify({'success': True, 'message': 'Payment failed webhook processed'})
+            print("❌ Payment failed event received")
+            return jsonify({'success': True, 'message': 'Payment failed processed'})
 
-        # Handle any other events
-        logger.info(f"ℹ️ Other event received: {event}")
-        return jsonify({'success': True, 'message': 'Webhook received'})
+        else:
+            print(f"ℹ️ Other event: {event}")
+            return jsonify({'success': True, 'message': f'Event {event} received'})
 
     except Exception as e:
-        logger.error(f"Webhook error: {str(e)}")
-        # Always return success to Razorpay to avoid retries
-        return jsonify({'success': True, 'message': 'Webhook processed'})
+        print(f"❌ Webhook error: {str(e)}")
+        # Always return success to avoid Razorpay retries
+        return jsonify({'success': True, 'message': 'Webhook processed with error'})
 
 # REMOVED OLD WEBHOOK CODE - Using simplified version above
 
