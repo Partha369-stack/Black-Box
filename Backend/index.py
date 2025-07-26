@@ -1178,6 +1178,46 @@ def razorpay_webhook():
         logger.error(f"Webhook error traceback: {traceback.format_exc()}")
         return jsonify({'error': 'Webhook processing failed'}), 500
 
+# DIRECT WEBHOOK ENDPOINT (BYPASS MIDDLEWARE)
+@app.route('/webhook/razorpay', methods=['POST'])
+def razorpay_webhook_direct():
+    """Direct Razorpay webhook endpoint - bypasses all middleware"""
+    try:
+        logger.info("🔔 DIRECT Razorpay webhook received")
+
+        # Get webhook data
+        webhook_data = request.get_json()
+
+        if not webhook_data:
+            logger.error("No webhook data received")
+            return jsonify({'error': 'No webhook data'}), 400
+
+        event = webhook_data.get('event')
+        logger.info(f"📨 Direct webhook event: {event}")
+
+        # Extract payload
+        payload = webhook_data.get('payload', {})
+
+        # Handle QR Code Payment Events
+        if event == 'qr_code.credited':
+            # QR Code payment received
+            qr_entity = payload.get('qr_code', {}).get('entity', {})
+            payment_entity = payload.get('payment', {}).get('entity', {})
+
+            order_id = qr_entity.get('notes', {}).get('order_id')
+            payment_id = payment_entity.get('id')
+            amount = payment_entity.get('amount', 0) / 100  # Convert from paise
+
+            logger.info(f"✅ DIRECT QR Payment - Order: {order_id}, Payment: {payment_id}, Amount: {amount}")
+
+            return jsonify({'success': True, 'message': 'Direct webhook processed successfully'})
+
+        return jsonify({'success': True, 'message': 'Direct webhook processed'})
+
+    except Exception as e:
+        logger.error(f"Direct webhook error: {str(e)}")
+        return jsonify({'error': 'Direct webhook failed'}), 500
+
 if __name__ == '__main__':
     # Determine if we're in a production environment
     is_production = os.environ.get('RAILWAY_ENVIRONMENT') == 'production' or \
