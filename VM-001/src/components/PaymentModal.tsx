@@ -42,6 +42,11 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
     setTimer(180); // Reset timer when QR code changes
     setExpired(false);
     setPaymentStatus('pending');
+
+    // Validate QR code URL on frontend as well
+    if (qrCodeUrl && !qrCodeUrl.includes('rzp.io') && !qrCodeUrl.includes('razorpay')) {
+      console.error('Invalid QR code URL detected:', qrCodeUrl);
+    }
   }, [qrCodeUrl]);
 
   useEffect(() => {
@@ -285,7 +290,7 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
                 <div
                   style={{
                     width: 300,
-                    height: 500,
+                    height: 300,
                     overflow: 'hidden',
                     borderRadius: 12,
                     margin: '0 auto',
@@ -302,8 +307,8 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
                     style={{
                       width: 300,
                       height: 300,
-                      objectFit: 'cover',
-                      objectPosition: 'center -230px',
+                      objectFit: 'contain',
+                      objectPosition: 'center',
                       display: 'block'
                     }}
                   />

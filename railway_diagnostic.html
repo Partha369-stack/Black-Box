@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Railway Backend Diagnostic</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .log { background: #f8f9fa; padding: 15px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; border-radius: 4px; max-height: 400px; overflow-y: auto; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .info { color: #17a2b8; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .status-box { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .status-success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .status-error { background: #f8d7da; border: 1px solid #f5c6cb; }
+        .status-warning { background: #fff3cd; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Railway Backend Diagnostic Tool</h1>
+        <p>This tool will help diagnose why Railway is generating placeholder QR codes instead of real Razorpay QR codes.</p>
+
+        <div class="test-section">
+            <h2>1. Check Railway Health</h2>
+            <button onclick="checkHealth()">Check Backend Health</button>
+            <div id="healthLog" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Check Razorpay Credentials on Railway</h2>
+            <button onclick="checkCredentials()">Check Credentials</button>
+            <div id="credentialsStatus" class="status-box"></div>
+            <div id="credentialsLog" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Test Direct QR Generation</h2>
+            <button onclick="testDirectQR()">Test QR Generation</button>
+            <div id="qrStatus" class="status-box"></div>
+            <div id="qrLog" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Test Order Creation (Full Flow)</h2>
+            <button onclick="testOrderFlow()">Test Order Flow</button>
+            <div id="orderStatus" class="status-box"></div>
+            <div id="orderLog" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 Diagnosis Summary</h2>
+            <div id="diagnosisSummary" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info', elementId = 'orderLog') {
+            const logs = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : 'info';
+            logs.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function updateStatus(elementId, type, message) {
+            const statusBox = document.getElementById(elementId);
+            statusBox.className = `status-box status-${type}`;
+            statusBox.innerHTML = `<strong>${type.toUpperCase()}:</strong> ${message}`;
+        }
+
+        async function checkHealth() {
+            log('🏥 Checking Railway backend health...', 'info', 'healthLog');
+            
+            try {
+                const response = await fetch('https://black-box-production.up.railway.app/api/health');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Railway backend is running', 'success', 'healthLog');
+                    log(`📊 Status: ${data.status}`, 'info', 'healthLog');
+                    log(`🕐 Timestamp: ${data.timestamp}`, 'info', 'healthLog');
+                } else {
+                    log(`❌ Health check failed: HTTP ${response.status}`, 'error', 'healthLog');
+                }
+            } catch (error) {
+                log(`❌ Cannot reach Railway backend: ${error.message}`, 'error', 'healthLog');
+            }
+        }
+
+        async function checkCredentials() {
+            log('🔑 Checking Razorpay credentials on Railway...', 'info', 'credentialsLog');
+            
+            try {
+                const response = await fetch('https://black-box-production.up.railway.app/debug/razorpay');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    log('📊 Credential Check Results:', 'info', 'credentialsLog');
+                    log(`🔑 Key ID Set: ${data.razorpay_key_id_set ? '✅ YES' : '❌ NO'}`, data.razorpay_key_id_set ? 'success' : 'error', 'credentialsLog');
+                    log(`🔑 Key ID Value: ${data.razorpay_key_id_value || 'NOT SET'}`, 'info', 'credentialsLog');
+                    log(`🔐 Secret Set: ${data.razorpay_secret_set ? '✅ YES' : '❌ NO'}`, data.razorpay_secret_set ? 'success' : 'error', 'credentialsLog');
+                    log(`🔐 Secret Value: ${data.razorpay_secret_value || 'NOT SET'}`, 'info', 'credentialsLog');
+                    log(`🌍 Environment: ${data.environment}`, 'info', 'credentialsLog');
+
+                    if (data.razorpay_key_id_set && data.razorpay_secret_set) {
+                        updateStatus('credentialsStatus', 'success', 'Razorpay credentials are properly set on Railway');
+                        log('✅ CREDENTIALS OK - Railway has Razorpay credentials', 'success', 'credentialsLog');
+                    } else {
+                        updateStatus('credentialsStatus', 'error', 'Razorpay credentials are MISSING on Railway');
+                        log('❌ CREDENTIALS MISSING - This is why you get placeholder QR codes!', 'error', 'credentialsLog');
+                        log('💡 SOLUTION: Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Railway Variables', 'warning', 'credentialsLog');
+                    }
+                } else {
+                    updateStatus('credentialsStatus', 'error', `Cannot check credentials: HTTP ${response.status}`);
+                    log(`❌ Credential check failed: HTTP ${response.status}`, 'error', 'credentialsLog');
+                    
+                    if (response.status === 404) {
+                        log('💡 Debug endpoint not found - Railway might be running old code', 'warning', 'credentialsLog');
+                    }
+                }
+            } catch (error) {
+                updateStatus('credentialsStatus', 'error', `Network error: ${error.message}`);
+                log(`❌ Error checking credentials: ${error.message}`, 'error', 'credentialsLog');
+            }
+        }
+
+        async function testDirectQR() {
+            log('🧪 Testing direct QR generation on Railway...', 'info', 'qrLog');
+
+            try {
+                const response = await fetch('https://black-box-production.up.railway.app/api/test/qr-generation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': 'VM-001'
+                    }
+                });
+
+                const data = await response.json();
+                log(`📥 Response: ${JSON.stringify(data, null, 2)}`, 'info', 'qrLog');
+
+                if (data.success) {
+                    log('✅ QR generation successful!', 'success', 'qrLog');
+                    log(`🆔 Order ID: ${data.order_id}`, 'info', 'qrLog');
+                    log(`🎯 QR Code URL: ${data.qr_code_url}`, 'info', 'qrLog');
+
+                    // Analyze QR URL
+                    if (data.qr_code_url.includes('rzp.io') || data.qr_code_url.includes('razorpay')) {
+                        updateStatus('qrStatus', 'success', 'REAL RAZORPAY QR CODE generated!');
+                        log('🎉 SUCCESS: Real Razorpay QR code detected!', 'success', 'qrLog');
+                    } else if (data.qr_code_url.includes('qrserver.com')) {
+                        updateStatus('qrStatus', 'error', 'PLACEHOLDER QR CODE detected - Razorpay failed');
+                        log('❌ PROBLEM: Placeholder QR code detected!', 'error', 'qrLog');
+                        log('🔍 This means Razorpay credentials are missing or invalid', 'warning', 'qrLog');
+                    } else {
+                        updateStatus('qrStatus', 'warning', 'Unknown QR code type');
+                        log('❓ Unknown QR code type', 'warning', 'qrLog');
+                    }
+                } else {
+                    updateStatus('qrStatus', 'error', `QR generation failed: ${data.error}`);
+                    log(`❌ QR generation failed: ${data.error}`, 'error', 'qrLog');
+                    if (data.response) {
+                        log(`📦 API Response: ${data.response}`, 'error', 'qrLog');
+                    }
+                }
+            } catch (error) {
+                updateStatus('qrStatus', 'error', `Network error: ${error.message}`);
+                log(`❌ Error testing QR generation: ${error.message}`, 'error', 'qrLog');
+            }
+        }
+
+        async function testOrderFlow() {
+            log('🛒 Testing full order creation flow...', 'info', 'orderLog');
+            
+            const testOrder = {
+                items: [{ id: '1', name: 'Test Product', price: 10, quantity: 1 }],
+                totalAmount: 10,
+                customerName: 'Diagnostic Test',
+                customerPhone: '9999999999'
+            };
+            
+            try {
+                log(`📤 Sending order: ${JSON.stringify(testOrder, null, 2)}`, 'info', 'orderLog');
+                
+                const response = await fetch('https://black-box-production.up.railway.app/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': 'VM-001'
+                    },
+                    body: JSON.stringify(testOrder)
+                });
+                
+                log(`📥 Response status: ${response.status}`, 'info', 'orderLog');
+                
+                const responseText = await response.text();
+                log(`📥 Raw response: ${responseText}`, 'info', 'orderLog');
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        
+                        if (data.success) {
+                            log('✅ Order created successfully!', 'success', 'orderLog');
+                            log(`🆔 Order ID: ${data.orderId}`, 'info', 'orderLog');
+                            log(`🎯 QR Code URL: ${data.qrCodeUrl}`, 'info', 'orderLog');
+                            
+                            // Analyze QR URL
+                            if (data.qrCodeUrl) {
+                                if (data.qrCodeUrl.includes('rzp.io') || data.qrCodeUrl.includes('razorpay')) {
+                                    updateStatus('orderStatus', 'success', 'Order created with REAL Razorpay QR code!');
+                                    log('🎉 SUCCESS: Real Razorpay QR code in order!', 'success', 'orderLog');
+                                } else if (data.qrCodeUrl.includes('qrserver.com')) {
+                                    updateStatus('orderStatus', 'error', 'Order created with PLACEHOLDER QR code');
+                                    log('❌ PROBLEM: Order has placeholder QR code!', 'error', 'orderLog');
+                                } else {
+                                    updateStatus('orderStatus', 'warning', 'Order created with unknown QR type');
+                                    log('❓ Unknown QR code type in order', 'warning', 'orderLog');
+                                }
+                            } else {
+                                updateStatus('orderStatus', 'error', 'Order created but NO QR code');
+                                log('❌ No QR code in order response', 'error', 'orderLog');
+                            }
+                        } else {
+                            updateStatus('orderStatus', 'error', `Order failed: ${data.error}`);
+                            log(`❌ Order creation failed: ${data.error}`, 'error', 'orderLog');
+                        }
+                    } catch (parseError) {
+                        updateStatus('orderStatus', 'error', 'Invalid JSON response');
+                        log(`❌ Failed to parse response: ${parseError.message}`, 'error', 'orderLog');
+                    }
+                } else {
+                    updateStatus('orderStatus', 'error', `HTTP ${response.status} error`);
+                    log(`❌ Order creation failed: HTTP ${response.status}`, 'error', 'orderLog');
+                    log(`📝 Error response: ${responseText}`, 'error', 'orderLog');
+                }
+                
+            } catch (error) {
+                updateStatus('orderStatus', 'error', `Network error: ${error.message}`);
+                log(`❌ Network error: ${error.message}`, 'error', 'orderLog');
+            }
+        }
+
+        function generateDiagnosis() {
+            const diagnosisLog = document.getElementById('diagnosisSummary');
+            diagnosisLog.innerHTML = '';
+            
+            log('🔍 DIAGNOSIS SUMMARY:', 'info', 'diagnosisSummary');
+            log('', 'info', 'diagnosisSummary');
+            log('Based on the test results above:', 'info', 'diagnosisSummary');
+            log('', 'info', 'diagnosisSummary');
+            log('1. If credentials check shows "MISSING" → Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Railway', 'warning', 'diagnosisSummary');
+            log('2. If QR generation shows "PLACEHOLDER" → Razorpay API calls are failing', 'warning', 'diagnosisSummary');
+            log('3. If order flow shows "PLACEHOLDER" → Same issue as above', 'warning', 'diagnosisSummary');
+            log('', 'info', 'diagnosisSummary');
+            log('🛠️ SOLUTION STEPS:', 'info', 'diagnosisSummary');
+            log('1. Go to Railway Dashboard → Your Project → Variables', 'info', 'diagnosisSummary');
+            log('2. Add: RAZORPAY_KEY_ID = rzp_test_03GDDKe1yQVSCT', 'info', 'diagnosisSummary');
+            log('3. Add: RAZORPAY_KEY_SECRET = g732gEWlZd8M0OB8DjGYCWns', 'info', 'diagnosisSummary');
+            log('4. Wait for Railway to redeploy (2-3 minutes)', 'info', 'diagnosisSummary');
+            log('5. Run this diagnostic again to verify', 'info', 'diagnosisSummary');
+        }
+
+        // Auto-run basic checks on page load
+        window.onload = function() {
+            setTimeout(() => {
+                checkHealth();
+                setTimeout(() => {
+                    checkCredentials();
+                    setTimeout(generateDiagnosis, 2000);
+                }, 1000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>

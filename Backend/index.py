@@ -477,103 +477,116 @@ def orders():
             # Create Razorpay order for REAL payment
             logging.info(f"🔑 Razorpay credentials check - Key ID: {'✅ SET' if RAZORPAY_KEY_ID else '❌ MISSING'}, Secret: {'✅ SET' if RAZORPAY_KEY_SECRET else '❌ MISSING'}")
 
-            if RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET:
-                try:
-                    logging.info(f"🚀 Creating Razorpay order for amount: ₹{order['totalAmount']}")
+            if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+                logging.error("❌ Razorpay credentials missing - cannot generate QR code")
+                return jsonify({
+                    'success': False,
+                    'error': 'Razorpay credentials not configured. Cannot generate QR code.',
+                    'orderId': order_id
+                }), 500
 
-                    razorpay_order_data = {
-                        'amount': int(float(order['totalAmount']) * 100),  # Convert to paise
-                        'currency': 'INR',
-                        'receipt': order_id,
-                        'payment_capture': 1
+            try:
+                logging.info(f"🚀 Creating Razorpay order for amount: ₹{order['totalAmount']}")
+
+                razorpay_order_data = {
+                    'amount': int(float(order['totalAmount']) * 100),  # Convert to paise
+                    'currency': 'INR',
+                    'receipt': order_id,
+                    'payment_capture': 1
+                }
+
+                logging.info(f"📤 Sending order data to Razorpay: {razorpay_order_data}")
+
+                razorpay_response = requests.post(
+                    'https://api.razorpay.com/v1/orders',
+                    json=razorpay_order_data,
+                    auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
+                    timeout=10
+                )
+
+                logging.info(f"📥 Razorpay order response: Status {razorpay_response.status_code}")
+
+                if razorpay_response.status_code == 200:
+                    razorpay_order = razorpay_response.json()
+                    logging.info(f"✅ Razorpay order created: {razorpay_order['id']}")
+
+                    # Create QR code
+                    qr_data = {
+                        'type': 'upi_qr',
+                        'name': f'BlackBox Order {order_id}',
+                        'usage': 'single_use',
+                        'fixed_amount': True,
+                        'payment_amount': int(float(order['totalAmount']) * 100),
+                        'description': f'Payment for BlackBox order {order_id}',
+                        'close_by': int(datetime.now().timestamp()) + 3600,  # 1 hour expiry
+                        'notes': {
+                            'order_id': order_id,
+                            'machine_id': tenant_id,
+                            'customer_name': order.get('customerName', 'Unknown'),
+                            'customer_phone': order.get('customerPhone', 'Unknown')
+                        }
                     }
 
-                    logging.info(f"📤 Sending order data to Razorpay: {razorpay_order_data}")
+                    logging.info(f"📤 Creating QR code with data: {qr_data}")
 
-                    razorpay_response = requests.post(
-                        'https://api.razorpay.com/v1/orders',
-                        json=razorpay_order_data,
+                    qr_response = requests.post(
+                        'https://api.razorpay.com/v1/payments/qr_codes',
+                        json=qr_data,
                         auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
                         timeout=10
                     )
 
-                    logging.info(f"📥 Razorpay order response: Status {razorpay_response.status_code}")
+                    logging.info(f"📥 QR code response: Status {qr_response.status_code}")
 
-                    if razorpay_response.status_code == 200:
-                        razorpay_order = razorpay_response.json()
-                        logging.info(f"✅ Razorpay order created: {razorpay_order['id']}")
+                    if qr_response.status_code == 200:
+                        qr_code = qr_response.json()
+                        logging.info(f"✅ QR code created successfully: {qr_code['id']}")
+                        logging.info(f"🎯 QR code image URL: {qr_code['image_url']}")
 
-                        # Create QR code
-                        qr_data = {
-                            'type': 'upi_qr',
-                            'name': f'BlackBox Order {order_id}',
-                            'usage': 'single_use',
-                            'fixed_amount': True,
-                            'payment_amount': int(float(order['totalAmount']) * 100),
-                            'description': f'Payment for BlackBox order {order_id}',
-                            'close_by': int(datetime.now().timestamp()) + 3600,  # 1 hour expiry
-                            'notes': {
-                                'order_id': order_id,
-                                'machine_id': tenant_id,
-                                'customer_name': order.get('customerName', 'Unknown'),
-                                'customer_phone': order.get('customerPhone', 'Unknown')
-                            }
-                        }
-
-                        logging.info(f"📤 Creating QR code with data: {qr_data}")
-
-                        qr_response = requests.post(
-                            'https://api.razorpay.com/v1/payments/qr_codes',
-                            json=qr_data,
-                            auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
-                            timeout=10
-                        )
-
-                        logging.info(f"📥 QR code response: Status {qr_response.status_code}")
-
-                        if qr_response.status_code == 200:
-                            qr_code = qr_response.json()
-                            logging.info(f"✅ QR code created successfully: {qr_code['id']}")
-                            logging.info(f"🎯 QR code image URL: {qr_code['image_url']}")
-
-                            # Broadcast update
-                            try:
-                                broadcast_orders_update()
-                            except Exception as broadcast_error:
-                                logging.warning(f"Broadcast failed: {broadcast_error}")
-
+                        # Validate that this is a real Razorpay QR code
+                        qr_url = qr_code['image_url']
+                        if not (qr_url and ('rzp.io' in qr_url or 'razorpay' in qr_url)):
+                            logging.error(f"❌ Invalid QR code URL: {qr_url}")
                             return jsonify({
-                                'success': True,
-                                'orderId': order_id,
-                                'qrCodeUrl': qr_code['image_url'],
-                                'qrCodeId': qr_code['id'],
-                                'razorpayOrderId': razorpay_order['id'],
-                                'message': 'Real Razorpay QR code generated successfully!'
-                            })
-                        else:
-                            logging.error(f"❌ QR creation failed: Status {qr_response.status_code}, Response: {qr_response.text}")
+                                'success': False,
+                                'error': 'Invalid QR code generated. Only Razorpay QR codes are allowed.',
+                                'orderId': order_id
+                            }), 500
+
+                        # Broadcast update
+                        try:
+                            broadcast_orders_update()
+                        except Exception as broadcast_error:
+                            logging.warning(f"Broadcast failed: {broadcast_error}")
+
+                        return jsonify({
+                            'success': True,
+                            'orderId': order_id,
+                            'qrCodeUrl': qr_code['image_url'],
+                            'qrCodeId': qr_code['id'],
+                            'razorpayOrderId': razorpay_order['id'],
+                            'message': 'Real Razorpay QR code generated successfully!'
+                        })
                     else:
-                        logging.error(f"❌ Razorpay order failed: Status {razorpay_response.status_code}, Response: {razorpay_response.text}")
+                        logging.error(f"❌ QR creation failed: Status {qr_response.status_code}, Response: {qr_response.text}")
+                else:
+                    logging.error(f"❌ Razorpay order failed: Status {razorpay_response.status_code}, Response: {razorpay_response.text}")
 
-                except requests.exceptions.Timeout:
-                    logging.error("❌ Razorpay API timeout")
-                except requests.exceptions.RequestException as req_error:
-                    logging.error(f"❌ Razorpay request error: {str(req_error)}")
-                except Exception as razorpay_error:
-                    logging.error(f"❌ Razorpay general error: {str(razorpay_error)}")
-            else:
-                logging.error("❌ Razorpay credentials not found in environment variables")
+            except requests.exceptions.Timeout:
+                logging.error("❌ Razorpay API timeout")
+            except requests.exceptions.RequestException as req_error:
+                logging.error(f"❌ Razorpay request error: {str(req_error)}")
+            except Exception as razorpay_error:
+                logging.error(f"❌ Razorpay general error: {str(razorpay_error)}")
 
-            # Fallback: Return order with placeholder QR code
-            logging.warning("⚠️ Using fallback placeholder QR code")
+            # NO FALLBACK - Return error if Razorpay QR generation fails
+            logging.error("❌ Razorpay QR generation failed - no fallback allowed")
             return jsonify({
-                'success': True,
+                'success': False,
+                'error': 'Razorpay QR code generation failed. Please try again.',
                 'orderId': order_id,
-                'qrCodeUrl': f'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=test@paytm&pn=BlackBox&am={order["totalAmount"]}&cu=INR&tn=Order-{order_id}',
-                'qrCodeId': f'qr-{order_id}',
-                'razorpayOrderId': f'razorpay-{order_id}',
-                'message': 'Order created with placeholder QR (Razorpay integration failed)'
-            })
+                'message': 'Order created but QR code generation failed'
+            }), 500
 
             # Original Razorpay code (commented out for debugging):
             """

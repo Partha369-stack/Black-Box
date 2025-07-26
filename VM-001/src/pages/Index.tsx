@@ -34,6 +34,7 @@ const Index = () => {
   const [orderId, setOrderId] = useState<string | undefined>(undefined);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | undefined>(undefined);
   const [qrCodeId, setQrCodeId] = useState<string | undefined>(undefined);
+  const [qrError, setQrError] = useState<string | undefined>(undefined);
   const [lastOrderRequest, setLastOrderRequest] = useState<{items: any[], totalAmount: number} | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,37 +152,47 @@ const Index = () => {
           'Content-Type': 'application/json',
           'x-tenant-id': MACHINE_ID
         },
-        body: JSON.stringify({ 
-          items: cartItems, 
+        body: JSON.stringify({
+          items: cartItems,
           totalAmount,
           customerName: customerInfo?.name || null,
           customerPhone: customerInfo?.phone || null,
         }),
       });
-      
-      if (!response.ok) {
-        console.error('Response status:', response.status);
-        const errorText = await response.text();
-        console.error('Response text:', errorText);
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
+
       const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.error('Response status:', response.status);
+        console.error('Response data:', data);
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      // Validate that we have a real Razorpay QR code
+      const qrUrl = data.qrCodeUrl;
+      if (!qrUrl || (!qrUrl.includes('rzp.io') && !qrUrl.includes('razorpay'))) {
+        console.error('Invalid QR code URL:', qrUrl);
+        throw new Error('Only Razorpay QR codes are supported. QR generation failed.');
+      }
+
       setOrderId(data.orderId);
       setQrCodeUrl(data.qrCodeUrl);
       setQrCodeId(data.qrCodeId);
+      setQrError(undefined); // Clear any previous errors
       toast({
         title: "Order Placed!",
         description: `Order ID: ${data.orderId}`,
       });
     } catch (error) {
       console.error('Order error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Could not place order. Please try again.';
+      setQrError(errorMessage);
       toast({
         title: "Order Failed",
-        description: "Could not place order. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
-      setIsPaymentModalOpen(false);
+      // Don't close the modal, show error instead
     }
   };
 
@@ -216,6 +227,7 @@ const Index = () => {
       setOrderId(undefined);
       setQrCodeUrl(undefined);
       setQrCodeId(undefined);
+      setQrError(undefined);
       await requestOrderAndQr(lastOrderRequest.items, lastOrderRequest.totalAmount);
     }
   };
@@ -312,6 +324,7 @@ const Index = () => {
         orderId={orderId}
         qrCodeUrl={qrCodeUrl}
         qrCodeId={qrCodeId}
+        qrError={qrError}
         onRetry={handleRetry}
       />
     </div>

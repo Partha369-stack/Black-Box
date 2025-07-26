@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VM-001 QR Code Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; }
+        .qr-display { margin: 20px 0; text-align: center; }
+        .qr-display img { max-width: 300px; border: 1px solid #ccc; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>🎯 VM-001 QR Code Test</h1>
+    
+    <div class="test-section">
+        <h2>Test QR Code Generation</h2>
+        <button onclick="testQRGeneration()">Create Test Order & Generate QR</button>
+        <button onclick="testLocalBackend()">Test Local Backend</button>
+        <button onclick="testRailwayBackend()">Test Railway Backend</button>
+
+        <div id="logs" class="log"></div>
+        <div id="qrDisplay" class="qr-display"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : type === 'warning' ? 'warning' : '';
+            logs.innerHTML += `<span class="${className}">${timestamp}: ${message}</span>\n`;
+            console.log(message);
+        }
+
+        async function testLocalBackend() {
+            log('🧪 Testing local backend connection...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3005/api/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Local backend is running!', 'success');
+                    log(`📊 Status: ${data.status}`, 'info');
+                } else {
+                    log('❌ Local backend not responding', 'error');
+                }
+            } catch (error) {
+                log(`❌ Local backend connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testRailwayBackend() {
+            log('🧪 Testing Railway backend connection...', 'info');
+            
+            try {
+                const response = await fetch('https://black-box-production.up.railway.app/api/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Railway backend is running!', 'success');
+                    log(`📊 Status: ${data.status}`, 'info');
+                } else {
+                    log('❌ Railway backend not responding', 'error');
+                }
+            } catch (error) {
+                log(`❌ Railway backend connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testQRGeneration() {
+            log('🧪 Starting QR generation test...', 'info');
+            
+            const testOrder = {
+                items: [
+                    { id: '1', name: 'Test Coke', price: 25, quantity: 1 }
+                ],
+                totalAmount: 25,
+                customerName: 'Test Customer',
+                customerPhone: '9876543210'
+            };
+            
+            try {
+                // Test local backend first
+                log('📤 Testing local backend (localhost:3005)...', 'info');
+                
+                const localResponse = await fetch('http://localhost:3005/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': 'VM-001'
+                    },
+                    body: JSON.stringify(testOrder)
+                });
+                
+                if (localResponse.ok) {
+                    const data = await localResponse.json();
+                    log(`✅ Local order created: ${data.orderId}`, 'success');
+                    log(`🎯 QR Code URL: ${data.qrCodeUrl}`, 'info');
+                    log(`🆔 QR Code ID: ${data.qrCodeId}`, 'info');
+                    
+                    displayQRCode(data.qrCodeUrl, data.qrCodeId, 'Local Backend');
+                    return;
+                }
+                
+                log('⚠️ Local backend failed, trying Railway...', 'warning');
+                
+                // Fallback to Railway backend
+                const railwayResponse = await fetch('https://black-box-production.up.railway.app/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': 'VM-001'
+                    },
+                    body: JSON.stringify(testOrder)
+                });
+                
+                if (railwayResponse.ok) {
+                    const data = await railwayResponse.json();
+                    log(`✅ Railway order created: ${data.orderId}`, 'success');
+                    log(`🎯 QR Code URL: ${data.qrCodeUrl}`, 'info');
+                    log(`🆔 QR Code ID: ${data.qrCodeId}`, 'info');
+                    
+                    displayQRCode(data.qrCodeUrl, data.qrCodeId, 'Railway Backend');
+                } else {
+                    const errorText = await railwayResponse.text();
+                    log(`❌ Railway order creation failed: ${errorText}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayQRCode(qrCodeUrl, qrCodeId, source) {
+            const qrDisplay = document.getElementById('qrDisplay');
+            
+            if (qrCodeUrl) {
+                if (qrCodeUrl.includes('razorpay')) {
+                    log('✅ Real Razorpay QR code detected!', 'success');
+                } else if (qrCodeUrl.includes('qrserver.com')) {
+                    log('⚠️ Placeholder QR code detected', 'warning');
+                } else {
+                    log('❓ Unknown QR code type', 'warning');
+                }
+                
+                qrDisplay.innerHTML = `
+                    <h3>Generated QR Code (${source}):</h3>
+                    <div style="border: 2px solid #ddd; border-radius: 12px; padding: 20px; background: white; display: inline-block;">
+                        <img src="${qrCodeUrl}" alt="QR Code" 
+                             style="width: 300px; height: 300px; object-fit: contain; display: block;"
+                             onload="log('🖼️ QR image loaded successfully', 'success')" 
+                             onerror="log('❌ QR image failed to load', 'error')" />
+                    </div>
+                    <p><strong>QR Code ID:</strong> ${qrCodeId}</p>
+                    <p><strong>Source:</strong> ${source}</p>
+                `;
+            } else {
+                log('❌ No QR code URL received', 'error');
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            log('🚀 Page loaded, running automatic tests...', 'info');
+            setTimeout(() => {
+                testLocalBackend();
+                setTimeout(() => {
+                    testRailwayBackend();
+                }, 1000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>
