@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Your Railway Backend</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .url-display { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Your Railway Backend</h1>
+        
+        <div class="test-section">
+            <h3>🔗 Backend URL</h3>
+            <div class="url-display">https://black-box-production.up.railway.app</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🏥 Health Check</h3>
+            <button onclick="testHealth()">Test Health</button>
+            <div id="healthResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔑 Razorpay Credentials</h3>
+            <button onclick="testCredentials()">Check Credentials</button>
+            <div id="credentialsResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🛒 Order Creation & QR Generation</h3>
+            <button onclick="testOrder()">Test Order & QR</button>
+            <div id="orderResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Summary</h3>
+            <div id="summary" class="result info">Run tests above to see summary</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🛠️ If Tests Fail</h3>
+            <div class="result warning">
+                <strong>Add these environment variables to Railway:</strong><br>
+                • RAZORPAY_KEY_ID = rzp_test_03GDDKe1yQVSCT<br>
+                • RAZORPAY_KEY_SECRET = g732gEWlZd8M0OB8DjGYCWns<br>
+                <br>
+                <strong>Steps:</strong><br>
+                1. Go to railway.app<br>
+                2. Open black-box-production project<br>
+                3. Go to Variables tab<br>
+                4. Add the variables above<br>
+                5. Wait 2-3 minutes for redeploy<br>
+                6. Test again
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const railwayUrl = 'https://black-box-production.up.railway.app';
+        let testResults = {
+            health: false,
+            credentials: false,
+            order: false
+        };
+
+        function addResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML += `<div class="result ${type}">${message}</div>`;
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            const allPassed = testResults.health && testResults.credentials && testResults.order;
+            
+            if (allPassed) {
+                summary.innerHTML = '<div class="result success">🎉 ALL TESTS PASSED! Your Railway backend is working perfectly!</div>';
+            } else {
+                let failedTests = [];
+                if (!testResults.health) failedTests.push('Health Check');
+                if (!testResults.credentials) failedTests.push('Razorpay Credentials');
+                if (!testResults.order) failedTests.push('QR Generation');
+                
+                summary.innerHTML = `<div class="result error">❌ Failed Tests: ${failedTests.join(', ')}</div>`;
+            }
+        }
+
+        async function testHealth() {
+            addResult('healthResults', '🔄 Testing health endpoint...', 'info');
+            
+            try {
+                const response = await fetch(`${railwayUrl}/api/health`, { cache: 'no-cache' });
+                const data = await response.json();
+                
+                if (response.ok && data.status) {
+                    addResult('healthResults', `✅ Health check passed: ${data.status}`, 'success');
+                    addResult('healthResults', `🕐 Timestamp: ${data.timestamp}`, 'info');
+                    testResults.health = true;
+                } else {
+                    addResult('healthResults', `❌ Health check failed: HTTP ${response.status}`, 'error');
+                    testResults.health = false;
+                }
+            } catch (error) {
+                addResult('healthResults', `❌ Health check error: ${error.message}`, 'error');
+                testResults.health = false;
+            }
+            updateSummary();
+        }
+
+        async function testCredentials() {
+            addResult('credentialsResults', '🔄 Checking Razorpay credentials...', 'info');
+            
+            try {
+                const response = await fetch(`${railwayUrl}/debug/razorpay`, { cache: 'no-cache' });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    addResult('credentialsResults', `🔑 Key ID Set: ${data.razorpay_key_id_set ? '✅ YES' : '❌ NO'}`, data.razorpay_key_id_set ? 'success' : 'error');
+                    addResult('credentialsResults', `🔑 Key ID Value: ${data.razorpay_key_id_value || 'NOT SET'}`, 'info');
+                    addResult('credentialsResults', `🔐 Secret Set: ${data.razorpay_secret_set ? '✅ YES' : '❌ NO'}`, data.razorpay_secret_set ? 'success' : 'error');
+                    addResult('credentialsResults', `🔐 Secret Value: ${data.razorpay_secret_value || 'NOT SET'}`, 'info');
+                    
+                    if (data.razorpay_key_id_set && data.razorpay_secret_set) {
+                        addResult('credentialsResults', '🎉 Razorpay credentials are properly configured!', 'success');
+                        testResults.credentials = true;
+                    } else {
+                        addResult('credentialsResults', '❌ Razorpay credentials are missing! Add them to Railway Variables.', 'error');
+                        testResults.credentials = false;
+                    }
+                } else if (response.status === 404) {
+                    addResult('credentialsResults', '❌ Debug endpoint not found - Railway might be running old code', 'error');
+                    testResults.credentials = false;
+                } else {
+                    addResult('credentialsResults', `❌ Credentials check failed: HTTP ${response.status}`, 'error');
+                    testResults.credentials = false;
+                }
+            } catch (error) {
+                addResult('credentialsResults', `❌ Credentials check error: ${error.message}`, 'error');
+                testResults.credentials = false;
+            }
+            updateSummary();
+        }
+
+        async function testOrder() {
+            addResult('orderResults', '🔄 Testing order creation and QR generation...', 'info');
+            
+            const testOrder = {
+                items: [{ id: '1', name: 'Test Product', price: 25, quantity: 1 }],
+                totalAmount: 25,
+                customerName: 'Test Customer',
+                customerPhone: '9999999999'
+            };
+
+            try {
+                const response = await fetch(`${railwayUrl}/api/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': 'VM-001'
+                    },
+                    body: JSON.stringify(testOrder),
+                    cache: 'no-cache'
+                });
+
+                addResult('orderResults', `📥 Response Status: ${response.status}`, 'info');
+
+                const responseText = await response.text();
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        
+                        if (data.success) {
+                            addResult('orderResults', '✅ Order created successfully!', 'success');
+                            addResult('orderResults', `🆔 Order ID: ${data.orderId}`, 'info');
+                            addResult('orderResults', `🎯 QR Code URL: ${data.qrCodeUrl}`, 'info');
+                            addResult('orderResults', `🔗 QR Code ID: ${data.qrCodeId}`, 'info');
+                            
+                            if (data.qrCodeUrl && (data.qrCodeUrl.includes('rzp.io') || data.qrCodeUrl.includes('razorpay'))) {
+                                addResult('orderResults', '🎉 REAL RAZORPAY QR CODE GENERATED!', 'success');
+                                addResult('orderResults', '✅ Your backend is working perfectly!', 'success');
+                                testResults.order = true;
+                            } else if (data.qrCodeUrl && data.qrCodeUrl.includes('qrserver.com')) {
+                                addResult('orderResults', '❌ Placeholder QR code generated (not Razorpay)', 'error');
+                                addResult('orderResults', '🛠️ This means Razorpay credentials are missing', 'warning');
+                                testResults.order = false;
+                            } else {
+                                addResult('orderResults', '❓ Unknown QR code type generated', 'warning');
+                                testResults.order = false;
+                            }
+                        } else {
+                            addResult('orderResults', `❌ Order failed: ${data.error || 'Unknown error'}`, 'error');
+                            testResults.order = false;
+                        }
+                    } catch (parseError) {
+                        addResult('orderResults', `❌ Failed to parse response: ${parseError.message}`, 'error');
+                        addResult('orderResults', `📝 Raw response: ${responseText}`, 'error');
+                        testResults.order = false;
+                    }
+                } else {
+                    addResult('orderResults', `❌ Order creation failed: HTTP ${response.status}`, 'error');
+                    addResult('orderResults', `📝 Response: ${responseText}`, 'error');
+                    testResults.order = false;
+                }
+            } catch (error) {
+                addResult('orderResults', `❌ Order creation error: ${error.message}`, 'error');
+                testResults.order = false;
+            }
+            updateSummary();
+        }
+
+        // Auto-run tests on page load
+        window.onload = function() {
+            setTimeout(() => {
+                testHealth();
+                setTimeout(() => {
+                    testCredentials();
+                    setTimeout(() => {
+                        testOrder();
+                    }, 2000);
+                }, 2000);
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

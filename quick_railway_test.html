@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Railway Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Quick Railway Test</h1>
+    <div id="results"></div>
+
+    <script>
+        async function testRailway() {
+            const results = document.getElementById('results');
+            
+            // Test 1: Health Check
+            try {
+                const healthRes = await fetch('https://black-box-production.up.railway.app/api/health');
+                const healthData = await healthRes.json();
+                results.innerHTML += `<div class="result success">✅ Health: ${healthData.status}</div>`;
+            } catch (error) {
+                results.innerHTML += `<div class="result error">❌ Health: ${error.message}</div>`;
+            }
+
+            // Test 2: Debug Endpoint
+            try {
+                const debugRes = await fetch('https://black-box-production.up.railway.app/debug/razorpay');
+                if (debugRes.ok) {
+                    const debugData = await debugRes.json();
+                    const keySet = debugData.razorpay_key_id_set;
+                    const secretSet = debugData.razorpay_secret_set;
+                    
+                    if (keySet && secretSet) {
+                        results.innerHTML += `<div class="result success">✅ Razorpay Credentials: BOTH SET</div>`;
+                        results.innerHTML += `<div class="result info">🔑 Key ID: ${debugData.razorpay_key_id_value}</div>`;
+                        results.innerHTML += `<div class="result info">🔐 Secret: ${debugData.razorpay_secret_value}</div>`;
+                    } else {
+                        results.innerHTML += `<div class="result error">❌ Razorpay Credentials: MISSING</div>`;
+                        results.innerHTML += `<div class="result error">🔑 Key ID Set: ${keySet ? 'YES' : 'NO'}</div>`;
+                        results.innerHTML += `<div class="result error">🔐 Secret Set: ${secretSet ? 'YES' : 'NO'}</div>`;
+                        results.innerHTML += `<div class="result error">🛠️ SOLUTION: Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to Railway Variables</div>`;
+                    }
+                } else {
+                    results.innerHTML += `<div class="result error">❌ Debug endpoint: HTTP ${debugRes.status}</div>`;
+                }
+            } catch (error) {
+                results.innerHTML += `<div class="result error">❌ Debug: ${error.message}</div>`;
+            }
+
+            // Test 3: Order Creation
+            try {
+                const orderRes = await fetch('https://black-box-production.up.railway.app/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': 'VM-001'
+                    },
+                    body: JSON.stringify({
+                        items: [{ id: '1', name: 'Test', price: 10, quantity: 1 }],
+                        totalAmount: 10,
+                        customerName: 'Test',
+                        customerPhone: '9999999999'
+                    })
+                });
+
+                const orderText = await orderRes.text();
+                
+                if (orderRes.ok) {
+                    const orderData = JSON.parse(orderText);
+                    if (orderData.success && orderData.qrCodeUrl) {
+                        if (orderData.qrCodeUrl.includes('rzp.io') || orderData.qrCodeUrl.includes('razorpay')) {
+                            results.innerHTML += `<div class="result success">✅ Order: Real Razorpay QR generated!</div>`;
+                            results.innerHTML += `<div class="result info">🎯 QR URL: ${orderData.qrCodeUrl}</div>`;
+                        } else {
+                            results.innerHTML += `<div class="result error">❌ Order: Placeholder QR generated</div>`;
+                            results.innerHTML += `<div class="result error">🎯 QR URL: ${orderData.qrCodeUrl}</div>`;
+                        }
+                    } else {
+                        results.innerHTML += `<div class="result error">❌ Order: ${orderData.error || 'Unknown error'}</div>`;
+                    }
+                } else {
+                    results.innerHTML += `<div class="result error">❌ Order: HTTP ${orderRes.status}</div>`;
+                    results.innerHTML += `<div class="result error">📝 Response: ${orderText}</div>`;
+                }
+            } catch (error) {
+                results.innerHTML += `<div class="result error">❌ Order: ${error.message}</div>`;
+            }
+        }
+
+        // Run test immediately
+        testRailway();
+    </script>
+</body>
+</html>

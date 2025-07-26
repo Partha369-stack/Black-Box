@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test New Railway Service</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test New Railway Service</h1>
+        
+        <div class="test-section">
+            <h3>🔗 Railway URL Configuration</h3>
+            <label>Enter your new Railway URL:</label>
+            <input type="text" id="railwayUrl" placeholder="https://your-service-name.up.railway.app" />
+            <button onclick="saveUrl()">Save URL</button>
+            <div id="urlStatus" class="result info">Enter your Railway URL above</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🏥 Health Check</h3>
+            <button onclick="testHealth()">Test Health</button>
+            <div id="healthResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔑 Razorpay Credentials</h3>
+            <button onclick="testCredentials()">Check Credentials</button>
+            <div id="credentialsResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🛒 Order Creation</h3>
+            <button onclick="testOrder()">Test Order</button>
+            <div id="orderResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Summary</h3>
+            <div id="summary" class="result info">Run tests above to see summary</div>
+        </div>
+    </div>
+
+    <script>
+        let railwayBaseUrl = '';
+
+        function saveUrl() {
+            const url = document.getElementById('railwayUrl').value.trim();
+            if (url) {
+                railwayBaseUrl = url.replace(/\/$/, ''); // Remove trailing slash
+                document.getElementById('urlStatus').innerHTML = `<div class="result success">✅ URL saved: ${railwayBaseUrl}</div>`;
+                localStorage.setItem('railwayUrl', railwayBaseUrl);
+            } else {
+                document.getElementById('urlStatus').innerHTML = `<div class="result error">❌ Please enter a valid URL</div>`;
+            }
+        }
+
+        function addResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML += `<div class="result ${type}">${message}</div>`;
+        }
+
+        async function testHealth() {
+            if (!railwayBaseUrl) {
+                addResult('healthResults', '❌ Please set Railway URL first', 'error');
+                return;
+            }
+
+            addResult('healthResults', '🔄 Testing health endpoint...', 'info');
+            
+            try {
+                const response = await fetch(`${railwayBaseUrl}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult('healthResults', `✅ Health check passed: ${data.status}`, 'success');
+                } else {
+                    addResult('healthResults', `❌ Health check failed: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('healthResults', `❌ Health check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCredentials() {
+            if (!railwayBaseUrl) {
+                addResult('credentialsResults', '❌ Please set Railway URL first', 'error');
+                return;
+            }
+
+            addResult('credentialsResults', '🔄 Checking Razorpay credentials...', 'info');
+            
+            try {
+                const response = await fetch(`${railwayBaseUrl}/debug/razorpay`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.razorpay_key_id_set && data.razorpay_secret_set) {
+                        addResult('credentialsResults', '✅ Razorpay credentials are set!', 'success');
+                        addResult('credentialsResults', `🔑 Key ID: ${data.razorpay_key_id_value}`, 'info');
+                        addResult('credentialsResults', `🔐 Secret: ${data.razorpay_secret_value}`, 'info');
+                    } else {
+                        addResult('credentialsResults', '❌ Razorpay credentials missing!', 'error');
+                        addResult('credentialsResults', `🔑 Key ID Set: ${data.razorpay_key_id_set ? 'YES' : 'NO'}`, 'warning');
+                        addResult('credentialsResults', `🔐 Secret Set: ${data.razorpay_secret_set ? 'YES' : 'NO'}`, 'warning');
+                    }
+                } else {
+                    addResult('credentialsResults', `❌ Credentials check failed: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult('credentialsResults', `❌ Credentials check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testOrder() {
+            if (!railwayBaseUrl) {
+                addResult('orderResults', '❌ Please set Railway URL first', 'error');
+                return;
+            }
+
+            addResult('orderResults', '🔄 Testing order creation...', 'info');
+            
+            const testOrder = {
+                items: [{ id: '1', name: 'Test Product', price: 25, quantity: 1 }],
+                totalAmount: 25,
+                customerName: 'Test Customer',
+                customerPhone: '9999999999'
+            };
+
+            try {
+                const response = await fetch(`${railwayBaseUrl}/api/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': 'VM-001'
+                    },
+                    body: JSON.stringify(testOrder)
+                });
+
+                const responseText = await response.text();
+                
+                if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    
+                    if (data.success) {
+                        addResult('orderResults', '✅ Order created successfully!', 'success');
+                        addResult('orderResults', `🆔 Order ID: ${data.orderId}`, 'info');
+                        addResult('orderResults', `🎯 QR Code URL: ${data.qrCodeUrl}`, 'info');
+                        
+                        if (data.qrCodeUrl && (data.qrCodeUrl.includes('rzp.io') || data.qrCodeUrl.includes('razorpay'))) {
+                            addResult('orderResults', '🎉 REAL RAZORPAY QR CODE GENERATED!', 'success');
+                        } else {
+                            addResult('orderResults', '❌ Not a real Razorpay QR code', 'error');
+                        }
+                    } else {
+                        addResult('orderResults', `❌ Order failed: ${data.error}`, 'error');
+                    }
+                } else {
+                    addResult('orderResults', `❌ Order creation failed: HTTP ${response.status}`, 'error');
+                    addResult('orderResults', `📝 Response: ${responseText}`, 'error');
+                }
+            } catch (error) {
+                addResult('orderResults', `❌ Order creation error: ${error.message}`, 'error');
+            }
+        }
+
+        // Load saved URL on page load
+        window.onload = function() {
+            const savedUrl = localStorage.getItem('railwayUrl');
+            if (savedUrl) {
+                document.getElementById('railwayUrl').value = savedUrl;
+                railwayBaseUrl = savedUrl;
+                document.getElementById('urlStatus').innerHTML = `<div class="result success">✅ Loaded saved URL: ${railwayBaseUrl}</div>`;
+            }
+        };
+    </script>
+</body>
+</html>
