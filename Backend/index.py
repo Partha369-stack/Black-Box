@@ -1117,104 +1117,10 @@ def razorpay_webhook():
         # Always return success to avoid Razorpay retries
         return jsonify({'success': True, 'message': 'Webhook processed with error'})
 
-# REMOVED OLD WEBHOOK CODE - Using simplified version above
-
 # Health check
-                # Update order status in database
-                supabase = get_supabase_client()
-                from datetime import datetime
-
-                update_data = {
-                    'payment_status': 'paid',
-                    'payment_id': payment_id,
-                    'payment_amount': amount,
-                    'updated_at': datetime.now().isoformat()
-                }
-
-                response = supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
-
-                if response.data:
-                    # Broadcast payment success via WebSocket to all connected clients
-                    socketio.emit('payment_success', {
-                        'orderId': order_id,
-                        'paymentId': payment_id,
-                        'amount': amount,
-                        'status': 'paid',
-                        'qrCodeId': qr_code_id
-                    }, broadcast=True)
-
-                    logger.info(f"✅ Payment SUCCESS: Order {order_id} marked as PAID")
-
-                    return jsonify({'success': True, 'message': 'QR Payment processed successfully'})
-                else:
-                    logger.error(f"Failed to update order {order_id} in database")
-
-        elif event == 'payment.captured':
-            # Regular payment captured (backup)
-            payment_entity = payload.get('payment', {}).get('entity', {})
-            order_id = payment_entity.get('notes', {}).get('order_id')
-            payment_id = payment_entity.get('id')
-            amount = payment_entity.get('amount', 0) / 100
-
-            logger.info(f"Regular payment captured - Order: {order_id}, Payment: {payment_id}")
-
-            if order_id:
-                supabase = get_supabase_client()
-                from datetime import datetime
-
-                update_data = {
-                    'payment_status': 'paid',
-                    'payment_id': payment_id,
-                    'payment_amount': amount,
-                    'updated_at': datetime.now().isoformat()
-                }
-
-                supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
-
-                socketio.emit('payment_success', {
-                    'orderId': order_id,
-                    'paymentId': payment_id,
-                    'amount': amount,
-                    'status': 'paid'
-                }, broadcast=True)
-
-                logger.info(f"✅ Regular Payment SUCCESS: Order {order_id} marked as PAID")
-
-        elif event == 'payment.failed':
-            # Payment failed
-            payment_entity = payload.get('payment', {}).get('entity', {})
-            order_id = payment_entity.get('notes', {}).get('order_id')
-
-            logger.info(f"Payment failed for order: {order_id}")
-
-            if order_id:
-                supabase = get_supabase_client()
-                from datetime import datetime
-
-                update_data = {
-                    'payment_status': 'failed',
-                    'updated_at': datetime.now().isoformat()
-                }
-
-                supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
-
-                socketio.emit('payment_failed', {
-                    'orderId': order_id,
-                    'status': 'failed'
-                }, broadcast=True)
-
-                logger.info(f"❌ Payment FAILED: Order {order_id} marked as FAILED")
-
-        else:
-            logger.info(f"Unhandled webhook event: {event}")
-
-        return jsonify({'success': True, 'message': 'Webhook processed'})
-
-    except Exception as e:
-        logger.error(f"Webhook processing error: {str(e)}")
-        import traceback
-        logger.error(f"Webhook error traceback: {traceback.format_exc()}")
-        return jsonify({'error': 'Webhook processing failed'}), 500
+@app.route('/health')
+def health_check():
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 # DIRECT WEBHOOK ENDPOINT (BYPASS MIDDLEWARE)
 @app.route('/webhook/razorpay', methods=['POST'])
