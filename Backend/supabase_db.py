@@ -74,33 +74,60 @@ def add_order(machine_id: str, order: dict):
     supabase = get_supabase_client()
     import uuid
     from datetime import datetime
-    
+    import json
+
     # Generate a proper order ID
     order_id = f"BB{int(datetime.now().timestamp() * 1000)}"
-    
+
+    # Safely serialize items to avoid circular references
+    items = order.get('items', [])
+    if isinstance(items, list):
+        # Ensure items are JSON serializable
+        safe_items = []
+        for item in items:
+            if isinstance(item, dict):
+                safe_item = {
+                    'id': str(item.get('id', '')),
+                    'name': str(item.get('name', '')),
+                    'price': float(item.get('price', 0)),
+                    'quantity': int(item.get('quantity', 1))
+                }
+                safe_items.append(safe_item)
+        items = safe_items
+
     # Use the correct column names for your orders table
     order_data = {
         'order_id': order_id,  # Use order_id instead of id
         'machine_id': machine_id,
-        'items': order.get('items', []),
-        'total_amount': order.get('totalAmount', 0),
+        'items': items,
+        'total_amount': float(order.get('totalAmount', 0)),
         'payment_status': 'pending',
-        'customer_name': order.get('customerName'),
-        'customer_phone': order.get('customerPhone'),
+        'customer_name': str(order.get('customerName', '')),
+        'customer_phone': str(order.get('customerPhone', '')),
         'created_at': datetime.now().isoformat(),
         'updated_at': datetime.now().isoformat()
     }
     
     try:
         response = supabase.table('orders').insert(order_data).execute()
-        
+
         if response.data and len(response.data) > 0:
             result = response.data[0]
-            return result
+            return {
+                'success': True,
+                'order_id': result.get('order_id'),
+                'order': result
+            }
         else:
-            raise Exception("Failed to create order in database - no data returned")
+            return {
+                'success': False,
+                'error': 'Failed to create order in database - no data returned'
+            }
     except Exception as e:
-        raise Exception(f"Database error while creating order: {str(e)}")
+        return {
+            'success': False,
+            'error': f"Database error while creating order: {str(e)}"
+        }
 
 def get_order(machine_id: str, order_id: str):
     supabase = get_supabase_client()
