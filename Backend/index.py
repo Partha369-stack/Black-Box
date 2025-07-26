@@ -837,31 +837,7 @@ def razorpay_webhook_simple():
 # DUPLICATE REMOVED - Using the newer verify_payment function above
 # Force deployment refresh - duplicate function issue fixed
 
-# Cancel order endpoint
-@app.route('/api/orders/<order_id>/cancel', methods=['POST'])
-def cancel_order(order_id):
-    tenant_id = request.headers.get('x-tenant-id')
-    if not tenant_id:
-        return jsonify({'error': 'Tenant ID is required'}), 400
-    
-    try:
-        # Update order status to cancelled
-        cancel_data = {
-            'payment_status': 'cancelled',
-            'updated_at': datetime.now().isoformat()
-        }
-        
-        update_order(tenant_id, order_id, cancel_data)
-        broadcast_orders_update()
-        
-        return jsonify({
-            'success': True, 
-            'message': f'Order {order_id} cancelled successfully'
-        })
-        
-    except Exception as e:
-        logging.error(f"Cancel order error: {str(e)}")
-        return jsonify({'success': False, 'error': 'Failed to cancel order'}), 500
+# DUPLICATE REMOVED - Using the newer cancel_order function above
 
 # Dashboard aggregated data endpoint for better performance
 @app.route('/api/dashboard/stats', methods=['GET'])
