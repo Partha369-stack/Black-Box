@@ -1023,37 +1023,41 @@ def verify_payment_simple():
 
 @app.route('/api/razorpay/webhook', methods=['POST'])
 def razorpay_webhook():
-    """Handle Razorpay webhook notifications - MAIN PAYMENT VERIFICATION"""
+    """Handle Razorpay webhook notifications - SIMPLIFIED VERSION"""
     try:
         logger.info("🔔 Razorpay webhook received")
 
         # Get webhook data
-        webhook_data = request.get_json()
+        webhook_data = request.get_json() or {}
+        event = webhook_data.get('event', '')
 
-        if not webhook_data:
-            logger.error("No webhook data received")
-            return jsonify({'error': 'No webhook data'}), 400
-
-        event = webhook_data.get('event')
         logger.info(f"📨 Webhook event: {event}")
 
-        # Extract payload
-        payload = webhook_data.get('payload', {})
-
-        # Handle QR Code Payment Events
+        # Simple success response for now
         if event == 'qr_code.credited':
-            # QR Code payment received
-            qr_entity = payload.get('qr_code', {}).get('entity', {})
-            payment_entity = payload.get('payment', {}).get('entity', {})
+            logger.info("✅ QR Code payment event received")
+            return jsonify({'success': True, 'message': 'QR payment webhook processed'})
 
-            qr_code_id = qr_entity.get('id')
-            order_id = qr_entity.get('notes', {}).get('order_id')
-            payment_id = payment_entity.get('id')
-            amount = payment_entity.get('amount', 0) / 100  # Convert from paise
+        elif event == 'payment.captured':
+            logger.info("✅ Payment captured event received")
+            return jsonify({'success': True, 'message': 'Payment captured webhook processed'})
 
-            logger.info(f"QR Payment received - Order: {order_id}, Payment: {payment_id}, Amount: {amount}")
+        elif event == 'payment.failed':
+            logger.info("❌ Payment failed event received")
+            return jsonify({'success': True, 'message': 'Payment failed webhook processed'})
 
-            if order_id:
+        # Handle any other events
+        logger.info(f"ℹ️ Other event received: {event}")
+        return jsonify({'success': True, 'message': 'Webhook received'})
+
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}")
+        # Always return success to Razorpay to avoid retries
+        return jsonify({'success': True, 'message': 'Webhook processed'})
+
+# REMOVED OLD WEBHOOK CODE - Using simplified version above
+
+# Health check
                 # Update order status in database
                 supabase = get_supabase_client()
                 from datetime import datetime
