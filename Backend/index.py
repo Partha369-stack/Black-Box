@@ -52,9 +52,11 @@ except Exception as e:
 app = Flask(__name__)
 # CORS configuration for production and development
 allowed_origins = [
-    'http://localhost:8000', 'http://localhost:8001', 'http://localhost:8081', 'http://localhost:8083',  # Development
+    'http://localhost:8000', 'http://localhost:8001', 'http://localhost:8081', 'http://localhost:8083', 'http://localhost:8084',  # Development
     'https://*.vercel.app',  # Vercel deployments
     'https://*.netlify.app',  # Netlify deployments (if needed)
+    'https://black-box-production.up.railway.app',  # Railway backend (for internal calls)
+    '*'  # Allow all origins for development (remove in production)
 ]
 
 # Add custom domain if provided
@@ -301,6 +303,59 @@ def init_inventory():
             'details': str(e)
         }), 500
 
+@app.route('/api/orders/init', methods=['GET'])
+def init_orders():
+    """Initialize orders table with sample data if empty"""
+    tenant_id = request.headers.get('x-tenant-id') or request.headers.get('X-Tenant-ID')
+    if not tenant_id:
+        return jsonify({'error': 'Tenant ID is required'}), 400
+
+    try:
+        # Check if orders already exist
+        existing_orders = get_orders(tenant_id)
+        if existing_orders.get('success') and existing_orders.get('orders') and len(existing_orders['orders']) > 0:
+            return jsonify({
+                'success': True,
+                'message': 'Orders already exist',
+                'count': len(existing_orders['orders'])
+            })
+
+        # Create sample orders
+        sample_orders = [
+            {
+                'items': [{'id': '1', 'name': 'Classic Chips', 'price': 25, 'quantity': 2}],
+                'totalAmount': 50,
+                'paymentMethod': 'razorpay',
+                'status': 'completed'
+            },
+            {
+                'items': [{'id': '18', 'name': 'Water Bottle', 'price': 20, 'quantity': 1}],
+                'totalAmount': 20,
+                'paymentMethod': 'razorpay',
+                'status': 'completed'
+            }
+        ]
+
+        created_orders = []
+        for order in sample_orders:
+            result = add_order(tenant_id, order)
+            if result.get('success'):
+                created_orders.append(result)
+
+        return jsonify({
+            'success': True,
+            'message': f'Created {len(created_orders)} sample orders',
+            'orders': created_orders
+        })
+
+    except Exception as e:
+        logger.error(f"Orders initialization error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to initialize orders',
+            'details': str(e)
+        }), 500
+
 # Orders APIs
 @app.route('/api/orders', methods=['GET', 'POST'])
 def orders():
@@ -309,8 +364,18 @@ def orders():
         return jsonify({'error': 'Tenant ID is required'}), 400
 
     if request.method == 'GET':
-        result = get_orders(tenant_id)
-        return jsonify(result)
+        try:
+            result = get_orders(tenant_id)
+            if result is None:
+                return jsonify({'success': True, 'orders': []})
+            return jsonify(result)
+        except Exception as e:
+            logging.error(f"Error fetching orders for tenant {tenant_id}: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': 'Failed to fetch orders',
+                'details': str(e)
+            }), 500
 
     if request.method == 'POST':
         try:

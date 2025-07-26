@@ -1,4 +1,13 @@
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
+
+// Suppress WebGL warnings
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  if (args[0]?.includes?.('uCycleColor1 uniform is missing a value parameter')) {
+    return; // Suppress this specific WebGL warning
+  }
+  originalWarn.apply(console, args);
+};
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
@@ -26,47 +35,48 @@ const SalesChart = memo(({ machineId }: SalesChartProps) => {
   const wsRef = useRef<WebSocket | null>(null);
 
   const fetchChartData = useCallback(async () => {
-    const res = await fetch("/api/orders", {
-      headers: {
-        'X-Tenant-ID': machineId
-      }
-    });
-    const data = await res.json();
-    if (data.success) {
-      const orders = data.orders.filter((o: any) => o.paymentStatus === "paid");
-      if (range === 'weekly') {
-        const today = new Date();
-        const days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(today);
-          d.setDate(today.getDate() - (6 - i));
-          return d;
-        });
-        const salesByDay = days.map((date) => {
-          const label = date.toLocaleDateString(undefined, { weekday: 'short' });
-          const filtered = orders.filter((o: any) => {
-            if (!o.createdAt) return false;
-            const d = new Date(o.createdAt);
-            return d.getFullYear() === date.getFullYear() &&
-                   d.getMonth() === date.getMonth() &&
-                   d.getDate() === date.getDate();
+    try {
+      const res = await fetch("/api/orders", {
+        headers: {
+          'X-Tenant-ID': machineId
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        const orders = data.orders.filter((o: any) => o.paymentStatus === "paid");
+        if (range === 'weekly') {
+          const today = new Date();
+          const days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(today);
+            d.setDate(today.getDate() - (6 - i));
+            return d;
           });
-          return {
-            label,
-            sales: filtered.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0),
-            count: filtered.length
-          };
-        });
-        setChartData(salesByDay);
-      } else if (range === 'daily') {
-        const now = new Date();
-        const hours = Array.from({ length: 24 }, (_, i) => i);
-        const salesByHour = hours.map((hour) => {
-          const label = `${hour}:00`;
-          const filtered = orders.filter((o: any) => {
-            if (!o.createdAt) return false;
-            const d = new Date(o.createdAt);
-            return d.getFullYear() === now.getFullYear() &&
-                   d.getMonth() === now.getMonth() &&
+          const salesByDay = days.map((date) => {
+            const label = date.toLocaleDateString(undefined, { weekday: 'short' });
+            const filtered = orders.filter((o: any) => {
+              if (!o.createdAt) return false;
+              const d = new Date(o.createdAt);
+              return d.getFullYear() === date.getFullYear() &&
+                     d.getMonth() === date.getMonth() &&
+                     d.getDate() === date.getDate();
+            });
+            return {
+              label,
+              sales: filtered.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0),
+              count: filtered.length
+            };
+          });
+          setChartData(salesByDay);
+        } else if (range === 'daily') {
+          const now = new Date();
+          const hours = Array.from({ length: 24 }, (_, i) => i);
+          const salesByHour = hours.map((hour) => {
+            const label = `${hour}:00`;
+            const filtered = orders.filter((o: any) => {
+              if (!o.createdAt) return false;
+              const d = new Date(o.createdAt);
+              return d.getFullYear() === now.getFullYear() &&
+                     d.getMonth() === now.getMonth() &&
                    d.getDate() === now.getDate() &&
                    d.getHours() === hour;
           });
@@ -101,12 +111,16 @@ const SalesChart = memo(({ machineId }: SalesChartProps) => {
         setChartData(salesByMonth);
       }
     }
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+      setChartData([]);
+    }
   }, [machineId, range]);
 
   useEffect(() => {
     fetchChartData();
     if (!wsRef.current) {
-      wsRef.current = new window.WebSocket("ws://localhost:3005");
+      wsRef.current = new window.WebSocket("wss://black-box-production.up.railway.app");
       wsRef.current.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === "ordersUpdated") {

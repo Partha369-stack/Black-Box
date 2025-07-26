@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
       // Add new ngrok URLs here as needed
     ],
     proxy: {
-      '/api': 'http://localhost:3005',
+      '/api': 'https://black-box-production.up.railway.app',
     },
   },
   plugins: [

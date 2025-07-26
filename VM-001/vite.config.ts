@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
     //   '8abf-2401-4900-76cd-6a6b-692e-b973-c903-56a7.ngrok-free.app'
     // ],
     proxy: {
-      '/api': 'http://localhost:3005',
+      '/api': 'https://black-box-production.up.railway.app',
     },
   },
   plugins: [

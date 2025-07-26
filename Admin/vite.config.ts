@@ -13,10 +13,10 @@ export default defineConfig({
     port: 8000,
     proxy: {
       '/api': {
-        target: 'http://localhost:3005',
+        target: 'https://black-box-production.up.railway.app',
         changeOrigin: true,
-        secure: false,
-        // Removed verbose logging to reduce console noise
+        secure: true,
+        // Production Railway backend
       },
     },
   },
