@@ -1034,6 +1034,119 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
+# Debug endpoint to check Razorpay credentials
+@app.route('/api/debug/razorpay', methods=['GET'])
+def debug_razorpay():
+    """Debug endpoint to check Razorpay credentials"""
+    return jsonify({
+        'razorpay_key_id_set': bool(RAZORPAY_KEY_ID),
+        'razorpay_key_id_value': RAZORPAY_KEY_ID[:8] + '...' if RAZORPAY_KEY_ID else 'NOT SET',
+        'razorpay_secret_set': bool(RAZORPAY_KEY_SECRET),
+        'razorpay_secret_value': RAZORPAY_KEY_SECRET[:8] + '...' if RAZORPAY_KEY_SECRET else 'NOT SET',
+        'environment': os.environ.get('RAILWAY_ENVIRONMENT', 'unknown')
+    })
+
+# Test QR code generation directly
+@app.route('/api/test/qr-generation', methods=['POST'])
+def test_qr_generation():
+    """Test QR code generation directly"""
+    try:
+        logging.info("🧪 Testing QR code generation...")
+        logging.info(f"🔑 Razorpay Key ID: {'✅ SET' if RAZORPAY_KEY_ID else '❌ MISSING'}")
+        logging.info(f"🔐 Razorpay Secret: {'✅ SET' if RAZORPAY_KEY_SECRET else '❌ MISSING'}")
+
+        if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+            return jsonify({
+                'success': False,
+                'error': 'Razorpay credentials not set',
+                'key_id_set': bool(RAZORPAY_KEY_ID),
+                'secret_set': bool(RAZORPAY_KEY_SECRET)
+            }), 400
+
+        # Create test order first
+        order_data = {
+            'amount': 2500,  # ₹25 in paise
+            'currency': 'INR',
+            'receipt': f'test_{int(datetime.now().timestamp())}',
+            'payment_capture': 1
+        }
+
+        logging.info(f"📤 Creating test Razorpay order: {order_data}")
+
+        order_response = requests.post(
+            'https://api.razorpay.com/v1/orders',
+            json=order_data,
+            auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
+            timeout=10
+        )
+
+        logging.info(f"📥 Order response: Status {order_response.status_code}")
+
+        if order_response.status_code != 200:
+            logging.error(f"❌ Order creation failed: {order_response.text}")
+            return jsonify({
+                'success': False,
+                'error': 'Order creation failed',
+                'response': order_response.text
+            }), 400
+
+        order = order_response.json()
+        logging.info(f"✅ Order created: {order['id']}")
+
+        # Create QR code
+        qr_data = {
+            'type': 'upi_qr',
+            'name': 'Test BlackBox Order',
+            'usage': 'single_use',
+            'fixed_amount': True,
+            'payment_amount': 2500,
+            'description': 'Test payment for BlackBox',
+            'close_by': int(datetime.now().timestamp()) + 3600,
+            'notes': {
+                'order_id': f'test_{int(datetime.now().timestamp())}',
+                'machine_id': 'VM-001',
+                'test': 'true'
+            }
+        }
+
+        logging.info(f"📤 Creating QR code: {qr_data}")
+
+        qr_response = requests.post(
+            'https://api.razorpay.com/v1/payments/qr_codes',
+            json=qr_data,
+            auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
+            timeout=10
+        )
+
+        logging.info(f"📥 QR response: Status {qr_response.status_code}")
+
+        if qr_response.status_code != 200:
+            logging.error(f"❌ QR creation failed: {qr_response.text}")
+            return jsonify({
+                'success': False,
+                'error': 'QR creation failed',
+                'response': qr_response.text
+            }), 400
+
+        qr_code = qr_response.json()
+        logging.info(f"✅ QR code created: {qr_code['id']}")
+        logging.info(f"🎯 QR image URL: {qr_code['image_url']}")
+
+        return jsonify({
+            'success': True,
+            'message': 'QR code generated successfully!',
+            'order_id': order['id'],
+            'qr_code_id': qr_code['id'],
+            'qr_code_url': qr_code['image_url']
+        })
+
+    except Exception as e:
+        logging.error(f"❌ Test QR generation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/test-simple', methods=['POST'])
 def test_simple():
     """Ultra simple test endpoint"""
