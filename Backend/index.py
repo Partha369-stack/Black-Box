@@ -778,68 +778,7 @@ def update_order_status(order_id):
         logging.error(str(e))
         return jsonify({'success': False, 'error': 'Failed to update status'}), 500
 
-# Payment verification endpoint
-@app.route('/api/verify-payment', methods=['POST'])
-def verify_payment():
-    tenant_id = request.headers.get('x-tenant-id')
-    if not tenant_id:
-        return jsonify({'error': 'Tenant ID is required'}), 400
-    
-    data = request.json
-    qr_code_id = data.get('qrCodeId')
-    
-    if not qr_code_id:
-        return jsonify({'success': False, 'error': 'QR Code ID is required'}), 400
-    
-    try:
-        # Check payment status with Razorpay
-        response = requests.get(
-            f"{os.getenv('RAZORPAY_API_BASE_URL', 'https://api.razorpay.com/v1')}/payments/qr_codes/{qr_code_id}/payments",
-            auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
-        )
-        
-        if response.status_code != 200:
-            return jsonify({'success': False, 'error': 'Failed to verify payment'})
-        
-        payment_data = response.json()
-        
-        # Check if any payment is captured
-        captured_payment = None
-        for payment in payment_data.get('items', []):
-            if payment.get('status') == 'captured':
-                captured_payment = payment
-                break
-        
-        if captured_payment:
-            # Update order in database
-            order_id = captured_payment.get('notes', {}).get('order_id')
-            if order_id:
-                payment_details = {
-                    'payment_status': 'paid',
-                    'updated_at': datetime.now().isoformat(),
-                    'payment_details': {
-                        'payment_id': captured_payment['id'],
-                        'amount': captured_payment['amount'],
-                        'method': captured_payment.get('method', 'upi'),
-                        'vpa': captured_payment.get('vpa'),
-                        'captured_at': captured_payment.get('created_at')
-                    }
-                }
-                
-                update_order(tenant_id, order_id, payment_details)
-                broadcast_orders_update()
-                
-                return jsonify({
-                    'success': True,
-                    'message': 'Payment verified and order updated',
-                    'paymentDetails': payment_details['payment_details']
-                })
-        
-        return jsonify({'success': False, 'message': 'No captured payment found'})
-        
-    except Exception as e:
-        logging.error(f"Payment verification error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# DUPLICATE REMOVED - Using the newer verify_payment function above
 
 # Cancel order endpoint
 @app.route('/api/orders/<order_id>/cancel', methods=['POST'])

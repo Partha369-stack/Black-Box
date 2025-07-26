@@ -25,9 +25,9 @@ async function testSimpleWebhook() {
   };
   
   try {
-    console.log('Sending webhook to:', `${baseUrl}/api/razorpay/webhook`);
-    
-    const response = await fetch(`${baseUrl}/api/razorpay/webhook`, {
+    console.log('Sending webhook to:', `${baseUrl}/webhook/razorpay`);
+
+    const response = await fetch(`${baseUrl}/webhook/razorpay`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
