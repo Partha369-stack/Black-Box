@@ -34,6 +34,8 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
   const [timer, setTimer] = useState(180); // 3 minutes in seconds
   const [expired, setExpired] = useState(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState('');
 
   useEffect(() => {
     setImgLoaded(false); // Reset when qrCodeUrl changes
@@ -43,41 +45,127 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
   }, [qrCodeUrl]);
 
   useEffect(() => {
+    // RAZORPAY WEBHOOKS ONLY - Listen for WebSocket events
     if (!imgLoaded || expired || paymentStatus === 'success' || !qrCodeId) return;
-    
-    pollingRef.current = setInterval(async () => {
+
+    console.log('🎯 QR Code ready for payment:', qrCodeId);
+    console.log('🔗 Listening for Razorpay webhook events...');
+
+    // Connect to WebSocket for real-time payment updates via Razorpay webhooks
+    const connectWebSocket = () => {
       try {
-        const response = await fetch('/api/verify-payment', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-tenant-id': 'VM-001'
-          },
-          body: JSON.stringify({ qrCodeId }),
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-          setPaymentStatus('success');
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
+        const wsUrl = 'wss://black-box-production.up.railway.app';
+        const socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+          console.log('✅ WebSocket connected for payment updates');
+          setVerificationMessage('Connected - Waiting for payment...');
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            // Listen for payment success events from Razorpay webhook
+            if (data.type === 'payment_success' && data.orderId === orderId) {
+              console.log('🎉 Payment SUCCESS received via webhook!', data);
+              setPaymentStatus('success');
+              setVerificationMessage(`Payment Successful! ₹${data.amount} received`);
+
+              // Close WebSocket
+              socket.close();
+            }
+
+            // Listen for payment failure events
+            if (data.type === 'payment_failed' && data.orderId === orderId) {
+              console.log('❌ Payment FAILED received via webhook!', data);
+              setVerificationMessage('Payment failed. Please try again.');
+            }
+
+          } catch (parseError) {
+            console.error('WebSocket message parse error:', parseError);
           }
-          // Clear cart after successful payment
-          // Add your cart clearing logic here
-        }
-      } catch (e) {
-        console.error('Payment verification error:', e);
+        };
+
+        socket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setVerificationMessage('Connection error. Payment will still work.');
+        };
+
+        socket.onclose = () => {
+          console.log('WebSocket connection closed');
+        };
+
+        return socket;
+
+      } catch (wsError) {
+        console.error('WebSocket connection error:', wsError);
+        setVerificationMessage('Connection failed. Payment will still work.');
+        return null;
       }
-    }, 2000); // Poll every 2 seconds
-    
+    };
+
+    const socket = connectWebSocket();
+
     return () => {
+      // Cleanup WebSocket connection
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
+
+      // Cleanup polling (if any)
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
         pollingRef.current = null;
       }
     };
   }, [imgLoaded, expired, paymentStatus, qrCodeId]);
+
+  // Manual payment verification function
+  const handleManualVerification = async () => {
+    if (!qrCodeId || isVerifying) return;
+
+    setIsVerifying(true);
+    setVerificationMessage('Checking payment status...');
+
+    try {
+      const response = await fetch('/api/verify-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'VM-001'
+        },
+        body: JSON.stringify({
+          qrCodeId,
+          orderId: orderId // Pass order ID if available
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (data.status === 'paid') {
+          setPaymentStatus('success');
+          setVerificationMessage('Payment verified successfully! 🎉');
+
+          // Clear any existing polling
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+        } else {
+          setVerificationMessage(data.message || 'Payment not yet received. Please try again.');
+        }
+      } else {
+        setVerificationMessage('Verification failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Manual verification error:', error);
+      setVerificationMessage('Verification failed. Please check your connection.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   useEffect(() => {
     if (!imgLoaded || expired) return;

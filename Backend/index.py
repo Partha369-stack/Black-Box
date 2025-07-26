@@ -626,29 +626,88 @@ def orders():
 
 @app.route('/api/verify-payment', methods=['POST'])
 def verify_payment():
-    """Verify payment status for an order - safe implementation"""
+    """Manual payment verification - check QR code status once"""
     try:
-        # Get request data safely
+        tenant_id = request.headers.get('x-tenant-id') or request.headers.get('X-Tenant-ID')
         request_data = request.get_json() or {}
         qr_code_id = request_data.get('qrCodeId', '')
+        order_id = request_data.get('orderId', '')
 
-        # Return safe, simple response
-        response_data = {
+        if not qr_code_id:
+            return jsonify({
+                'success': False,
+                'error': 'QR Code ID required'
+            }), 400
+
+        # Check if we have Razorpay credentials for real verification
+        if RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET:
+            try:
+                # Check QR code status with Razorpay
+                qr_response = requests.get(
+                    f'https://api.razorpay.com/v1/payments/qr_codes/{qr_code_id}',
+                    auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
+                )
+
+                if qr_response.status_code == 200:
+                    qr_data = qr_response.json()
+
+                    # Check if QR code has been paid
+                    if qr_data.get('status') == 'closed' and qr_data.get('payments_amount_received', 0) > 0:
+                        # Payment received! Update order status
+                        if order_id:
+                            supabase = get_supabase_client()
+                            from datetime import datetime
+
+                            update_data = {
+                                'payment_status': 'paid',
+                                'updated_at': datetime.now().isoformat()
+                            }
+
+                            supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
+
+                        return jsonify({
+                            'success': True,
+                            'status': 'paid',
+                            'message': 'Payment verified successfully!',
+                            'amount': qr_data.get('payments_amount_received', 0) / 100
+                        })
+                    else:
+                        return jsonify({
+                            'success': True,
+                            'status': 'pending',
+                            'message': 'Payment not yet received'
+                        })
+
+            except Exception as razorpay_error:
+                logger.error(f"Razorpay verification error: {str(razorpay_error)}")
+
+        # Fallback: Check database for manual updates
+        if order_id:
+            supabase = get_supabase_client()
+            response = supabase.table('orders').select('payment_status').eq('order_id', order_id).execute()
+
+            if response.data and len(response.data) > 0:
+                payment_status = response.data[0].get('payment_status', 'pending')
+
+                return jsonify({
+                    'success': True,
+                    'status': payment_status,
+                    'message': f'Payment status: {payment_status}'
+                })
+
+        # Default response
+        return jsonify({
             'success': True,
             'status': 'pending',
-            'message': 'Payment verification in progress',
-            'qrCodeId': qr_code_id
-        }
-
-        return jsonify(response_data)
+            'message': 'Click "Check Payment" to verify manually'
+        })
 
     except Exception as e:
-        # Safe error response
-        error_response = {
+        logger.error(f"Payment verification error: {str(e)}")
+        return jsonify({
             'success': False,
             'error': 'Payment verification failed'
-        }
-        return jsonify(error_response), 500
+        }), 500
 
 @app.route('/api/orders/<order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
@@ -989,6 +1048,135 @@ def verify_payment_simple():
         'status': 'pending',
         'message': 'Payment verification works'
     })
+
+@app.route('/api/razorpay/webhook', methods=['POST'])
+def razorpay_webhook():
+    """Handle Razorpay webhook notifications - MAIN PAYMENT VERIFICATION"""
+    try:
+        logger.info("Razorpay webhook received")
+
+        # Get webhook data
+        webhook_data = request.get_json()
+
+        if not webhook_data:
+            logger.error("No webhook data received")
+            return jsonify({'error': 'No webhook data'}), 400
+
+        logger.info(f"Webhook event: {webhook_data.get('event')}")
+
+        # Extract event and payload
+        event = webhook_data.get('event')
+        payload = webhook_data.get('payload', {})
+
+        # Handle QR Code Payment Events
+        if event == 'qr_code.credited':
+            # QR Code payment received
+            qr_entity = payload.get('qr_code', {}).get('entity', {})
+            payment_entity = payload.get('payment', {}).get('entity', {})
+
+            qr_code_id = qr_entity.get('id')
+            order_id = qr_entity.get('notes', {}).get('order_id')
+            payment_id = payment_entity.get('id')
+            amount = payment_entity.get('amount', 0) / 100  # Convert from paise
+
+            logger.info(f"QR Payment received - Order: {order_id}, Payment: {payment_id}, Amount: {amount}")
+
+            if order_id:
+                # Update order status in database
+                supabase = get_supabase_client()
+                from datetime import datetime
+
+                update_data = {
+                    'payment_status': 'paid',
+                    'payment_id': payment_id,
+                    'payment_amount': amount,
+                    'updated_at': datetime.now().isoformat()
+                }
+
+                response = supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
+
+                if response.data:
+                    # Broadcast payment success via WebSocket to all connected clients
+                    socketio.emit('payment_success', {
+                        'orderId': order_id,
+                        'paymentId': payment_id,
+                        'amount': amount,
+                        'status': 'paid',
+                        'qrCodeId': qr_code_id
+                    }, broadcast=True)
+
+                    logger.info(f"✅ Payment SUCCESS: Order {order_id} marked as PAID")
+
+                    return jsonify({'success': True, 'message': 'QR Payment processed successfully'})
+                else:
+                    logger.error(f"Failed to update order {order_id} in database")
+
+        elif event == 'payment.captured':
+            # Regular payment captured (backup)
+            payment_entity = payload.get('payment', {}).get('entity', {})
+            order_id = payment_entity.get('notes', {}).get('order_id')
+            payment_id = payment_entity.get('id')
+            amount = payment_entity.get('amount', 0) / 100
+
+            logger.info(f"Regular payment captured - Order: {order_id}, Payment: {payment_id}")
+
+            if order_id:
+                supabase = get_supabase_client()
+                from datetime import datetime
+
+                update_data = {
+                    'payment_status': 'paid',
+                    'payment_id': payment_id,
+                    'payment_amount': amount,
+                    'updated_at': datetime.now().isoformat()
+                }
+
+                supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
+
+                socketio.emit('payment_success', {
+                    'orderId': order_id,
+                    'paymentId': payment_id,
+                    'amount': amount,
+                    'status': 'paid'
+                }, broadcast=True)
+
+                logger.info(f"✅ Regular Payment SUCCESS: Order {order_id} marked as PAID")
+
+        elif event == 'payment.failed':
+            # Payment failed
+            payment_entity = payload.get('payment', {}).get('entity', {})
+            order_id = payment_entity.get('notes', {}).get('order_id')
+
+            logger.info(f"Payment failed for order: {order_id}")
+
+            if order_id:
+                supabase = get_supabase_client()
+                from datetime import datetime
+
+                update_data = {
+                    'payment_status': 'failed',
+                    'updated_at': datetime.now().isoformat()
+                }
+
+                supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
+
+                socketio.emit('payment_failed', {
+                    'orderId': order_id,
+                    'status': 'failed'
+                }, broadcast=True)
+
+                logger.info(f"❌ Payment FAILED: Order {order_id} marked as FAILED")
+
+        else:
+            logger.info(f"Unhandled webhook event: {event}")
+
+        return jsonify({'success': True, 'message': 'Webhook processed'})
+
+    except Exception as e:
+        logger.error(f"Webhook processing error: {str(e)}")
+        import traceback
+        logger.error(f"Webhook error traceback: {traceback.format_exc()}")
+        return jsonify({'error': 'Webhook processing failed'}), 500
 
 if __name__ == '__main__':
     # Determine if we're in a production environment
