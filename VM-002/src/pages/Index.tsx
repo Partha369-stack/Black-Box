@@ -6,7 +6,22 @@ import PaymentModal from '@/components/PaymentModal';
 import { CustomerInfoModal } from '@/components/CustomerInfoModal';
 import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { customFetch } from '@/lib/api';
+// Embedded API function to avoid import issues in Railway
+const customFetch = async (url: string, options: RequestInit = {}) => {
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    'x-tenant-id': 'VM-002',
+    'x-api-key': 'blackbox-api-key-2024'
+  };
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers
+    }
+  });
+};
 
 interface Product {
   id: string;
