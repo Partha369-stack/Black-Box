@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npm run preview",
+    "startCommand": "npm run serve",
     "healthcheckPath": "/vm-001/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
