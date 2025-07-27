@@ -108,10 +108,11 @@ const Particles = ({
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new Renderer({ depth: false, alpha: true });
-    const gl = renderer.gl;
-    container.appendChild(gl.canvas);
-    gl.clearColor(0, 0, 0, 0);
+    try {
+      const renderer = new Renderer({ depth: false, alpha: true });
+      const gl = renderer.gl;
+      container.appendChild(gl.canvas);
+      gl.clearColor(0, 0, 0, 0);
 
     const camera = new Camera(gl, { fov: 15 });
     camera.position.set(0, 0, cameraDistance);
@@ -172,8 +173,8 @@ const Particles = ({
         uBaseSize: { value: particleBaseSize },
         uSizeRandomness: { value: sizeRandomness },
         uAlphaParticles: { value: alphaParticles ? 1 : 0 },
-        uCycleColor1: { value: colorCycle[0] },
-        uCycleColor2: { value: colorCycle[1] },
+        uCycleColor1: { value: colorCycle[0] || [0.0, 1.0, 0.533] },
+        uCycleColor2: { value: colorCycle[1] || [0.2, 1.0, 0.6] },
         uColorMix: { value: 0 },
       },
       transparent: true,
@@ -233,6 +234,11 @@ const Particles = ({
         container.removeChild(gl.canvas);
       }
     };
+    } catch (error) {
+      console.warn('Particles WebGL error:', error);
+      // Return empty cleanup function if particles fail to initialize
+      return () => {};
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     particleCount,

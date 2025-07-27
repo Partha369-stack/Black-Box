@@ -33,7 +33,7 @@ const App = () => {
             inset: 1,
             width: '100vw',
             height: '100vh',
-            zIndex: 9999,
+            zIndex: -1,
             pointerEvents: 'none',
           }}>
             <Particles
@@ -47,8 +47,8 @@ const App = () => {
             />
           </div>
         )}
-        <div style={{ position: 'relative', zIndex: 0 }}>
-          <BrowserRouter basename="/vm-001/">
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <BrowserRouter basename={process.env.NODE_ENV === 'production' ? '/' : '/vm-001/'}>
             <Routes>
               <Route path="/" element={<Index />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
