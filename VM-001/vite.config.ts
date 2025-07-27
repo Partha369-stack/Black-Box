@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: '/vm-001',
+  base: '/vm-001/',
   server: {
     host: true,
     port: 8083, // Change from 8084 to 8083 if desired
@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
-    minify: 'terser',
+    minify: 'esbuild',
   },
   plugins: [
     react(),
@@ -39,5 +39,6 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
 }));

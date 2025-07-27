@@ -61,7 +61,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 100);
 
-      const response = await fetch('http://localhost:3005/api/upload', {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
           'X-Tenant-ID': tenantId,

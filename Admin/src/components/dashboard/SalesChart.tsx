@@ -32,7 +32,6 @@ const SalesChart = memo(({ machineId }: SalesChartProps) => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [range, setRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [mode, setMode] = useState<'sales' | 'count'>('sales');
-  const wsRef = useRef<WebSocket | null>(null);
 
   const fetchChartData = useCallback(async () => {
     try {
@@ -119,19 +118,11 @@ const SalesChart = memo(({ machineId }: SalesChartProps) => {
 
   useEffect(() => {
     fetchChartData();
-    if (!wsRef.current) {
-      wsRef.current = new window.WebSocket("wss://black-box-production.up.railway.app");
-      wsRef.current.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "ordersUpdated") {
-          fetchChartData();
-        }
-      };
-    }
-    return () => {
-      wsRef.current?.close();
-      wsRef.current = null;
-    };
+
+    // TODO: Re-enable WebSocket when Socket.IO client is properly configured
+    // For now, chart will update when user navigates or refreshes
+    console.log('[SalesChart] Chart data fetched, WebSocket temporarily disabled');
+
   }, [range, mode, machineId, fetchChartData]);
 
   // Memoized description to prevent unnecessary re-renders

@@ -333,7 +333,7 @@ export const Inventory = () => {
     const formData = new FormData();
     formData.append("image", file);
     try {
-    const response = await fetch('http://localhost:3005/api/upload', {
+    const response = await fetch('/api/upload', {
         method: "POST",
         headers: {
           'X-Tenant-ID': machineId,
@@ -354,7 +354,7 @@ export const Inventory = () => {
   // Helper to get full image URL
   const getImageUrl = (image: string) => {
     if (image.startsWith('http')) return image;
-    return `http://localhost:3005${image}`;
+    return `${import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app'}${image}`;
   };
 
   if (loading) return <div className="text-white">Loading inventory...</div>;

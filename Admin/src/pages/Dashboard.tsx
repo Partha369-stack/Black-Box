@@ -33,7 +33,6 @@ export const Dashboard = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const wsRef = useRef<WebSocket | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const navigate = useNavigate();
   const [autoRefresh, setAutoRefresh] = useState(false);

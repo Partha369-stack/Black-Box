@@ -32,7 +32,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onUploadSuccess, t
 
     setIsUploading(true);
     try {
-      const response = await fetch('http://localhost:3005/api/upload', {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
           'X-Tenant-ID': tenantId,
