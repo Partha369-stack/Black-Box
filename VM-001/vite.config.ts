@@ -38,6 +38,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@/lib/utils": path.resolve(__dirname, "./src/lib/utils.ts"),
+      "@/lib/api": path.resolve(__dirname, "./src/lib/api.ts"),
     },
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
