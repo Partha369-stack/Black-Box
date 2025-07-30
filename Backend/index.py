@@ -13,6 +13,8 @@ from flask_socketio import SocketIO, emit
 import logging
 from flask import Response
 from werkzeug.middleware.proxy_fix import ProxyFix
+import threading
+import time
 
 # Load environment variables
 load_dotenv()
@@ -1329,11 +1331,90 @@ def railway_test_razorpay():
             'recommendation': 'Check Railway logs for detailed error information'
         }), 500
 
-# DUPLICATE WEBHOOK REMOVED
 
-# Health check endpoint (duplicate removed)
+# Background task for cancelling pending orders
+def cancel_expired_pending_orders():
+    with app.app_context():
+        while True:
+            try:
+                logger.info("⚙️ Running background task to cancel expired pending orders...")
+                supabase = get_supabase_client()
+                from datetime import datetime, timedelta
 
-# WEBHOOK ENDPOINTS CLEANED - Only one webhook remains
+                # Get all pending orders older than 1 minute
+                time_threshold = (datetime.utcnow() - timedelta(seconds=60)).isoformat()
+                response = supabase.table('orders').select('*').eq('payment_status', 'pending').lt('created_at', time_threshold).execute()
+
+                if response.data:
+                    for order in response.data:
+                        order_id = order.get('order_id')
+                        tenant_id = order.get('machine_id')
+                        logger.info(f"Cancelling expired pending order {order_id} for tenant {tenant_id}")
+
+                        # Use the existing cancel_order logic
+                        cancel_order_internal(tenant_id, order_id)
+
+            except Exception as e:
+                logger.error(f"Error in background task: {str(e)}")
+            
+            time.sleep(60) # Run every 60 seconds
+
+def cancel_order_internal(tenant_id, order_id):
+    """Internal function to cancel an order, callable from background task"""
+    try:
+        # Get the order first
+        order = get_order(tenant_id, order_id)
+        if not order:
+            logger.warning(f"Order {order_id} not found for cancellation.")
+            return
+
+        # Only cancel if order is still pending
+        if order.get('payment_status') != 'pending':
+            logger.info(f"Order {order_id} is no longer pending (status: {order.get('payment_status')}). Skipping cancellation.")
+            return
+
+        # Restore inventory for each item
+        supabase = get_supabase_client()
+        for item in order.get('items', []):
+            try:
+                # Get current inventory
+                inv_response = supabase.table('inventory').select('quantity').eq('machine_id', tenant_id).eq('id', item['id']).execute()
+
+                if inv_response.data:
+                    current_quantity = inv_response.data[0]['quantity']
+                    new_quantity = current_quantity + item['quantity']
+
+                    # Update inventory
+                    supabase.table('inventory').update({
+                        'quantity': new_quantity,
+                        'updated_at': datetime.now().isoformat()
+                    }).eq('machine_id', tenant_id).eq('id', item['id']).execute()
+
+                    logging.info(f"Restored inventory for {item['id']}: {current_quantity} + {item['quantity']} = {new_quantity}")
+
+            except Exception as inv_error:
+                logging.error(f"Failed to restore inventory for item {item['id']}: {str(inv_error)}")
+
+        # Update order status to cancelled
+        update_order(tenant_id, order_id, {
+            'payment_status': 'cancelled',
+            'updated_at': datetime.now().isoformat()
+        })
+
+        # Broadcast updates
+        broadcast_orders_update()
+        broadcast_inventory_update()
+
+        logging.info(f"Order {order_id} cancelled successfully and inventory restored")
+
+    except Exception as e:
+        logging.error(f"Error cancelling order {order_id}: {str(e)}")
+
+# Start the background task in a separate thread
+if __name__ == '__main__':
+    scheduler_thread = threading.Thread(target=cancel_expired_pending_orders)
+    scheduler_thread.daemon = True
+    scheduler_thread.start()
 
 if __name__ == '__main__':
     # Determine if we're in a production environment
