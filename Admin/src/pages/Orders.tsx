@@ -4,7 +4,7 @@ import { Search, ShoppingCart } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
-import { Calendar, Download, Filter, FileText } from "lucide-react";
+import { Calendar, Download, Filter, FileText, X } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import {
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { toast } from "../hooks/use-toast";
 import { Calendar as ReactCalendar } from "../components/ui/calendar";
 import { DateRange } from "react-day-picker";
 
@@ -218,6 +219,73 @@ Generated on: ${new Date().toLocaleString()}
     window.URL.revokeObjectURL(url);
   };
 
+  const cancelOrder = async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-ID': machineId,
+          'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Order Cancelled",
+          description: "Order has been cancelled and inventory restored",
+        });
+
+        // Refresh orders list
+        const fetchOrders = async () => {
+          setLoading(true);
+          setError(null);
+          try {
+            const response = await fetch('/api/orders', {
+              headers: {
+                'X-Tenant-ID': machineId,
+                'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
+              }
+            });
+            const data = await response.json();
+            if (data.success) {
+              setOrders(data.orders);
+            } else {
+              console.error('API Error:', data.error || 'Unknown error');
+              setError(data.error || "Failed to fetch orders");
+            }
+          } catch (err: any) {
+            console.error('Fetch Error:', err);
+            setError(err.message || "Failed to fetch orders");
+          } finally {
+            setLoading(false);
+          }
+        };
+        fetchOrders();
+
+        // Close dialog if the cancelled order was selected
+        if (selectedOrder && (selectedOrder.order_id === orderId || selectedOrder.orderId === orderId)) {
+          setSelectedOrder(null);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to cancel order",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Cancel order error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel order",
+        variant: "destructive"
+      });
+    }
+  };
+
   const exportToCSV = () => {
     const headers = [
       "Order ID",
@@ -364,7 +432,7 @@ Generated on: ${new Date().toLocaleString()}
                   <TableHead className="font-semibold text-white border-r border-white/5">Total</TableHead>
                   <TableHead className="font-semibold text-white border-r border-white/5">Status</TableHead>
                   <TableHead className="font-semibold text-white border-r border-white/5">UPI Details</TableHead>
-                  <TableHead className="font-semibold text-white border-r border-white/5">Timestamp</TableHead>
+                  <TableHead className="font-semibold text-white">Timestamp</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -425,7 +493,7 @@ Generated on: ${new Date().toLocaleString()}
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-white/60">
-                      {order.created_at ? new Date(order.created_at).toLocaleString() : 
+                      {order.created_at ? new Date(order.created_at).toLocaleString() :
                        order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
                     </TableCell>
                   </TableRow>
@@ -450,14 +518,17 @@ Generated on: ${new Date().toLocaleString()}
             <div className="flex items-center justify-between">
               <DialogTitle>Order Details</DialogTitle>
               {selectedOrder && (
-                <Button
-                  onClick={() => downloadOrderSlip(selectedOrder)}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Download Slip
-                </Button>
+                <div className="flex gap-2">
+                  {/* Cancel button removed */}
+                  <Button
+                    onClick={() => downloadOrderSlip(selectedOrder)}
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Download Slip
+                  </Button>
+                </div>
               )}
             </div>
           </DialogHeader>
