@@ -857,10 +857,22 @@ def razorpay_webhook_simple():
                     supabase = get_supabase_client()
                     from datetime import datetime
 
+                    # Extract UPI payment details from webhook
+                    payment_method = payment_entity.get('method', 'upi')
+                    vpa = payment_entity.get('vpa', '')
+                    bank_name = payment_entity.get('bank', '')
+                    payer_account_type = payment_entity.get('payer_account_type', '')
+                    upi_transaction_id = payment_entity.get('acquirer_data', {}).get('rrn', '')
+                    
                     update_data = {
                         'payment_status': 'paid',
                         'payment_id': payment_id,
                         'payment_amount': amount,
+                        'payment_method': payment_method,
+                        'vpa': vpa,
+                        'bank_name': bank_name,
+                        'payer_account_type': payer_account_type,
+                        'upi_transaction_id': upi_transaction_id,
                         'updated_at': datetime.now().isoformat()
                     }
 

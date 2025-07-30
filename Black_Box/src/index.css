@@ -1,0 +1,233 @@
+/* Your Brand Font Import */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(0, 0, 0, 0.5); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Your Brand Typography */
+.brand-font {
+  font-family: 'Orbitron', monospace;
+}
+
+.brand-font-secondary {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Unique Visual Effects */
+@keyframes morphing {
+  0%, 100% { border-radius: 0%; }
+  25% { border-radius: 50%; }
+  50% { border-radius: 25%; }
+  75% { border-radius: 75%; }
+}
+
+.morphing-shape {
+  animation: morphing 8s ease-in-out infinite;
+}
+
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+
+.glitch-effect:hover {
+  animation: glitch 0.3s ease-in-out;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar but keep functionality */
+body::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* Revolutionary 3D Effects */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* Holographic Effect */
+@keyframes hologram {
+  0%, 100% {
+    opacity: 0.8;
+    filter: hue-rotate(0deg) brightness(1);
+  }
+  25% {
+    opacity: 0.9;
+    filter: hue-rotate(90deg) brightness(1.1);
+  }
+  50% {
+    opacity: 1;
+    filter: hue-rotate(180deg) brightness(1.2);
+  }
+  75% {
+    opacity: 0.9;
+    filter: hue-rotate(270deg) brightness(1.1);
+  }
+}
+
+.holographic {
+  animation: hologram 4s ease-in-out infinite;
+}
+
+/* Neural Network Pulse */
+@keyframes neural-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+    transform: scale(1.05);
+  }
+}
+
+.neural-pulse {
+  animation: neural-pulse 2s ease-in-out infinite;
+}
+
+/* Quantum Distortion */
+@keyframes quantum-distort {
+  0%, 100% {
+    filter: blur(0px) hue-rotate(0deg);
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    filter: blur(0.5px) hue-rotate(90deg);
+    transform: scale(1.01) rotate(1deg);
+  }
+  50% {
+    filter: blur(1px) hue-rotate(180deg);
+    transform: scale(1.02) rotate(0deg);
+  }
+  75% {
+    filter: blur(0.5px) hue-rotate(270deg);
+    transform: scale(1.01) rotate(-1deg);
+  }
+}
+
+.quantum-distort {
+  animation: quantum-distort 6s ease-in-out infinite;
+}
+
+/* Immersive Glow */
+.immersive-glow {
+  box-shadow:
+    0 0 20px rgba(255, 255, 255, 0.1),
+    0 0 40px rgba(255, 255, 255, 0.05),
+    inset 0 0 20px rgba(255, 255, 255, 0.05);
+}
+
+/* Reality Bend */
+@keyframes reality-bend {
+  0%, 100% {
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+  }
+  25% {
+    clip-path: polygon(0% 5%, 95% 0%, 100% 95%, 5% 100%);
+  }
+  50% {
+    clip-path: polygon(5% 0%, 100% 5%, 95% 100%, 0% 95%);
+  }
+  75% {
+    clip-path: polygon(0% 0%, 95% 5%, 100% 100%, 5% 95%);
+  }
+}
+
+.reality-bend {
+  animation: reality-bend 8s ease-in-out infinite;
+}

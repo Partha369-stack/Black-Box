@@ -518,17 +518,15 @@ Generated on: ${new Date().toLocaleString()}
             <div className="flex items-center justify-between">
               <DialogTitle>Order Details</DialogTitle>
               {selectedOrder && (
-                <div className="flex gap-2">
-                  {/* Cancel button removed */}
-                  <Button
-                    onClick={() => downloadOrderSlip(selectedOrder)}
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Download Slip
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => downloadOrderSlip(selectedOrder)}
+                  size="sm"
+                  variant="outline"
+                  className="bg-black/50 border-white/20 hover:bg-white/10 text-white/80 hover:text-white text-xs px-2 py-1 h-7"
+                >
+                  <FileText className="w-3 h-3 mr-1" />
+                  Receipt
+                </Button>
               )}
             </div>
           </DialogHeader>
