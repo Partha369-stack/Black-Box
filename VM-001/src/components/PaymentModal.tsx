@@ -152,15 +152,24 @@ const PaymentModal = ({ isOpen, onClose, cartItems, totalAmount, orderId, qrCode
     // Cancel the order if it's still pending
     if (orderId && paymentStatus !== 'success') {
       try {
-        await fetch(`/api/orders/${orderId}/cancel`, {
+        console.log('🚫 Cancelling order:', orderId);
+        const response = await fetch(`https://black-box-production.up.railway.app/api/orders/${orderId}/cancel`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': 'VM-001'
+            'X-Tenant-ID': 'VM-001',
+            'X-API-Key': 'blackbox-api-key-2024'
           }
         });
+        
+        const result = await response.json();
+        if (result.success) {
+          console.log('✅ Order cancelled successfully:', orderId);
+        } else {
+          console.error('❌ Failed to cancel order:', result.error);
+        }
       } catch (error) {
-        console.error('Failed to cancel order:', error);
+        console.error('❌ Network error cancelling order:', error);
       }
     }
     
