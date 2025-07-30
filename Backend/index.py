@@ -705,7 +705,7 @@ def verify_payment():
 @app.route('/api/orders/<order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
     """Cancel an order and restore inventory"""
-    tenant_id = request.headers.get('x-tenant-id')
+    tenant_id = request.headers.get('x-tenant-id') or request.headers.get('X-Tenant-ID')
     if not tenant_id:
         return jsonify({'error': 'Tenant ID is required'}), 400
 
