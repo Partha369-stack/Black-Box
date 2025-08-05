@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { inquiryService, InquiryInsert } from '../lib/supabase'
+import { inquiryService, InquiryInsert } from '@/lib/supabase'
 
 interface ContactFormData {
   name: string

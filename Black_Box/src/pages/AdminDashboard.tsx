@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { inquiryService, Inquiry } from '../lib/supabase'
+import { inquiryService, Inquiry } from '@/lib/supabase'
 
 const AdminDashboard = () => {
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
