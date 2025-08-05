@@ -18,6 +18,7 @@ import time
 
 # Load environment variables
 load_dotenv()
+# Force redeploy - UUID fix applied
 
 # Setup structured logging
 logging.basicConfig(
