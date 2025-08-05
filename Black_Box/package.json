@@ -26,7 +26,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "express": "^5.1.0",
+    "express": "^4.19.2",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.462.0",
     "ogl": "^1.0.11",
