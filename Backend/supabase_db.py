@@ -20,11 +20,7 @@ def get_supabase_client() -> Client:
         # Create client with service role key - this should bypass RLS automatically
         client = create_client(
             SUPABASE_URL, 
-            SUPABASE_KEY,
-            options={
-                "auto_refresh_token": False,
-                "persist_session": False,
-            }
+            SUPABASE_KEY
         )
         return client
     except Exception as e:
