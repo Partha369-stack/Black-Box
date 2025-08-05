@@ -23,10 +23,10 @@ interface DashboardData {
 
 // Optimized dashboard data fetcher using the new aggregated endpoint
 const fetchDashboardStats = async (machineId: string): Promise<DashboardData> => {
-  const response = await fetch('/api/dashboard/stats', {
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+  const response = await fetch(`${apiUrl}/api/dashboard/stats`, {
     headers: {
-      'X-Tenant-ID': machineId,
-      'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
+      'X-Tenant-ID': machineId
     }
   });
 
@@ -39,7 +39,8 @@ const fetchDashboardStats = async (machineId: string): Promise<DashboardData> =>
 
 // Fetch orders with React Query
 const fetchOrders = async (machineId: string) => {
-  const response = await fetch('/api/orders', {
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+  const response = await fetch(`${apiUrl}/api/orders`, {
     headers: {
       'X-Tenant-ID': machineId,
       'X-API-Key': import.meta.env.VITE_API_KEY || 'blackbox-api-key-2024'
@@ -56,7 +57,8 @@ const fetchOrders = async (machineId: string) => {
 
 // Fetch inventory with React Query
 const fetchInventory = async (machineId: string) => {
-  const response = await fetch('/api/inventory', {
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+  const response = await fetch(`${apiUrl}/api/inventory`, {
     headers: {
       'X-Tenant-ID': machineId
     }

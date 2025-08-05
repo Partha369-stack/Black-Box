@@ -58,7 +58,7 @@ const Index = () => {
   // Fetch products from backend
   const fetchProducts = async () => {
     try {
-      const res = await fetch(`https://black-box-production.up.railway.app/api/inventory`, {
+      const res = await customFetch(`https://black-box-production.up.railway.app/api/inventory`, {
         headers: {
           'x-tenant-id': MACHINE_ID
         }

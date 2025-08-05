@@ -80,7 +80,8 @@ export const Inventory = () => {
   const fetchInventory = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/inventory', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+      const response = await fetch(`${apiUrl}/api/inventory`, {
         headers: {
           'X-Tenant-ID': machineId
         }
@@ -125,7 +126,8 @@ export const Inventory = () => {
         'X-API-Key': apiKey
       };
       console.log('📡 Request headers:', headers);
-      const res = await fetch(`/api/inventory`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/inventory`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({ id, quantity: newQuantity })
@@ -156,7 +158,8 @@ export const Inventory = () => {
 
   const deleteProduct = async (id: string) => {
     try {
-      const res = await fetch(`/api/inventory`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/inventory`, {
         method: 'DELETE',
         headers: { 
           'Content-Type': 'application/json',
@@ -204,7 +207,8 @@ export const Inventory = () => {
     const payload = { ...newProduct };
     console.log('Add Product Payload:', payload);
     try {
-      const res = await fetch("/api/inventory", {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/inventory`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -244,7 +248,8 @@ export const Inventory = () => {
     if (!editingProduct) return;
 
     try {
-      const res = await fetch(`/api/inventory`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+      const res = await fetch(`${apiUrl}/api/inventory`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -333,7 +338,8 @@ export const Inventory = () => {
     const formData = new FormData();
     formData.append("image", file);
     try {
-    const response = await fetch('/api/upload', {
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+    const response = await fetch(`${apiUrl}/api/upload`, {
         method: "POST",
         headers: {
           'X-Tenant-ID': machineId,
