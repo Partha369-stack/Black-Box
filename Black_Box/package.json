@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "node server.js",
     "preview": "node server.js",
     "lint": "eslint .",
     "build:static": "vite build && cp dist/index.html dist/404.html"
