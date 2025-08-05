@@ -1,3 +1,46 @@
+
+
+.policy-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px;
+  color: #333;
+  line-height: 1.6;
+}
+
+.policy-container h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #000;
+}
+
+.policy-container h2 {
+  font-size: 1.8rem;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: #555;
+}
+
+.policy-container h3 {
+  font-size: 1.5rem;
+  margin-top: 15px;
+  margin-bottom: 8px;
+  color: #666;
+}
+
+.policy-container p, .policy-container ul {
+  margin-bottom: 10px;
+}
+
+.policy-container ul {
+  list-style-type: disc;
+  padding-left: 20px;
+}
+
+.policy-container li {
+  margin-bottom: 5px;
+}
+
 /* Black Box Brand Styles */
 .gradient-text {
   background: linear-gradient(135deg, #000000 0%, #333333 50%, #000000 100%);
@@ -35,4 +78,28 @@
 
 .brand-shadow-dark {
   box-shadow: 0 10px 40px rgba(255, 255, 255, 0.1);
+}
+
+/* About Page Black Theme */
+.about-page-black {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.about-page-black * {
+  color: inherit !important;
+}
+
+.about-page-black h1,
+.about-page-black h2,
+.about-page-black h3,
+.about-page-black h4,
+.about-page-black h5,
+.about-page-black h6 {
+  color: #ffffff !important;
+}
+
+.about-page-black p,
+.about-page-black div {
+  color: #ffffff !important;
 }

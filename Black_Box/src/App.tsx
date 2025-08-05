@@ -1,15 +1,21 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
-import EnterTheBoxPage from './pages/EnterTheBoxPage'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsOfService from './pages/TermsOfService'
+import CookiePolicy from './pages/CookiePolicy'
+import AdminDashboard from './pages/AdminDashboard'
 import './App.css'
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="min-h-screen bg-background">
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/enter-the-box" element={<EnterTheBoxPage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
         </Routes>
       </div>
     </Router>
