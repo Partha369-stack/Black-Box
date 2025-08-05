@@ -306,11 +306,12 @@ def init_inventory():
                 'inventory': existing_inventory['inventory']
             })
 
-        # Default inventory items
+        # Default inventory items with proper UUID format
+        import uuid
         default_inventory = [
-            {"id": "0", "name": "Test Product", "price": 1, "quantity": 100, "category": "Test", "slot": "A1", "image": "/product_img/download.png", "description": "A test product for 1 Rs"},
-            {"id": "1", "name": "Classic Chips", "price": 25, "quantity": 15, "category": "Snacks", "slot": "A2", "image": "/product_img/1cb22c3bb69c63b305b98a758709ce74.jpg", "description": "Crispy potato chips with a classic flavor"},
-            {"id": "18", "name": "Water Bottle", "price": 20, "quantity": 40, "category": "Water", "slot": "G1", "image": "/product_img/e9280a387e8049210642406c032b6a60.jpg", "description": "Purified drinking water"}
+            {"id": str(uuid.uuid4()), "name": "Test Product", "price": 1, "quantity": 100, "category": "Test", "slot": "A1", "image": "/product_img/download.png", "description": "A test product for 1 Rs"},
+            {"id": str(uuid.uuid4()), "name": "Classic Chips", "price": 25, "quantity": 15, "category": "Snacks", "slot": "A2", "image": "/product_img/1cb22c3bb69c63b305b98a758709ce74.jpg", "description": "Crispy potato chips with a classic flavor"},
+            {"id": str(uuid.uuid4()), "name": "Water Bottle", "price": 20, "quantity": 40, "category": "Water", "slot": "G1", "image": "/product_img/e9280a387e8049210642406c032b6a60.jpg", "description": "Purified drinking water"}
         ]
         
         # Add each item to inventory
