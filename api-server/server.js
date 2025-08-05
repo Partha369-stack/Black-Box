@@ -114,7 +114,41 @@ app.get('/api/inventory', (req, res) => {
 });
 
 // Initialize inventory for a tenant (creates default products if none exist)
-app.post('/api/inventory/init', (req, res) => {
+app.route('/api/inventory/init')
+.get((req, res) => {
+  try {
+    const tenantId = req.headers['x-tenant-id'] || 'VM-001';
+    const apiKey = req.headers['x-api-key'];
+    
+    // Basic API key check (optional for GET)
+    if (apiKey && apiKey !== 'blackbox-api-key-2024') {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid API key'
+      });
+    }
+    
+    // Initialize inventory if it doesn't exist or is empty
+    if (!inventoryData[tenantId] || inventoryData[tenantId].length === 0) {
+      inventoryData[tenantId] = [...defaultInventory];
+    }
+    
+    res.json({
+      success: true,
+      message: 'Inventory initialized successfully',
+      tenantId: tenantId,
+      inventoryCount: inventoryData[tenantId].length
+    });
+  } catch (error) {
+    console.error('Error initializing inventory:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to initialize inventory',
+      message: error.message
+    });
+  }
+})
+.post((req, res) => {
   try {
     const tenantId = req.headers['x-tenant-id'] || 'VM-001';
     const apiKey = req.headers['x-api-key'];

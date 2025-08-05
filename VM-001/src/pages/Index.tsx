@@ -58,7 +58,8 @@ const Index = () => {
   // Fetch products from backend
   const fetchProducts = async () => {
     try {
-      const res = await customFetch(`https://black-box-production.up.railway.app/api/inventory`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+      const res = await customFetch(`${apiUrl}/api/inventory`, {
         headers: {
           'x-tenant-id': MACHINE_ID
         }
@@ -89,7 +90,9 @@ const Index = () => {
   // Initialize products if empty
   const initializeProducts = async () => {
     try {
-      const res = await customFetch("https://black-box-production.up.railway.app/api/inventory/init", {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+      const res = await customFetch(`${apiUrl}/api/inventory/init`, {
+        method: 'GET',
         headers: {
           'x-tenant-id': MACHINE_ID,
           'x-api-key': 'blackbox-api-key-2024'
@@ -161,7 +164,8 @@ const Index = () => {
 
   const requestOrderAndQr = async (cartItems: any[], totalAmount: number, customerInfo?: { name: string; phone: string }) => {
     try {
-      const response = await fetch('https://black-box-production.up.railway.app/api/orders', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://black-box-production.up.railway.app';
+      const response = await fetch(`${apiUrl}/api/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
