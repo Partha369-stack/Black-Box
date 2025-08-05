@@ -17,8 +17,15 @@ def get_supabase_client() -> Client:
         raise Exception("Missing Supabase credentials. Please check your .env file.")
     
     try:
-        # Create client with service role key
-        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        # Create client with service role key - this should bypass RLS automatically
+        client = create_client(
+            SUPABASE_URL, 
+            SUPABASE_KEY,
+            options={
+                "auto_refresh_token": False,
+                "persist_session": False,
+            }
+        )
         return client
     except Exception as e:
         raise Exception(f"Failed to create Supabase client: {str(e)}")
