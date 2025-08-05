@@ -173,9 +173,9 @@ const Particles = ({
         uBaseSize: { value: particleBaseSize },
         uSizeRandomness: { value: sizeRandomness },
         uAlphaParticles: { value: alphaParticles ? 1 : 0 },
-        uCycleColor1: { value: colorCycle[0] || [0.0, 1.0, 0.533] },
-        uCycleColor2: { value: colorCycle[1] || [0.2, 1.0, 0.6] },
-        uColorMix: { value: 0 },
+        uCycleColor1: { value: new Float32Array(colorCycle[0] || [0.0, 1.0, 0.533]) },
+        uCycleColor2: { value: new Float32Array(colorCycle[1] || [0.2, 1.0, 0.6]) },
+        uColorMix: { value: 0.0 },
       },
       transparent: true,
       depthTest: false,
@@ -215,8 +215,8 @@ const Particles = ({
       const idx = Math.floor(tSec) % colorCycle.length;
       const nextIdx = (idx + 1) % colorCycle.length;
       const mixVal = tSec % 1;
-      program.uniforms.uCycleColor1.value = colorCycle[idx];
-      program.uniforms.uCycleColor2.value = colorCycle[nextIdx];
+      program.uniforms.uCycleColor1.value.set(colorCycle[idx]);
+      program.uniforms.uCycleColor2.value.set(colorCycle[nextIdx]);
       program.uniforms.uColorMix.value = mixVal;
 
       renderer.render({ scene: particles, camera });

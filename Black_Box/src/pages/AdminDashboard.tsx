@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { inquiryService, Inquiry } from '@/lib/supabase'
+import AdminAuth from '@/components/AdminAuth'
 
 const AdminDashboard = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null)
@@ -14,9 +16,22 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState<any>(null)
 
   useEffect(() => {
-    loadInquiries()
-    loadStats()
+    // Check authentication on mount
+    const isAuth = localStorage.getItem('blackbox_admin_auth') === 'true'
+    setIsAuthenticated(isAuth)
+    
+    if (isAuth) {
+      loadInquiries()
+      loadStats()
+    }
   }, [filters])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadInquiries()
+      loadStats()
+    }
+  }, [isAuthenticated])
 
   const loadInquiries = async () => {
     try {
@@ -95,6 +110,11 @@ const AdminDashboard = () => {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  // Show authentication screen if not authenticated
+  if (!isAuthenticated) {
+    return <AdminAuth onAuthenticated={() => setIsAuthenticated(true)} />
   }
 
   return (

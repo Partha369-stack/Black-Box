@@ -1,0 +1,27 @@
+{
+  "name": "blackbox-api-server",
+  "version": "1.0.0",
+  "description": "Backend API server for BlackBox vending machines",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "vending-machine",
+    "api",
+    "express",
+    "inventory"
+  ],
+  "author": "BlackBox Team",
+  "license": "MIT"
+}
