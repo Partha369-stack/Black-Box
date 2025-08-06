@@ -19,32 +19,47 @@ export interface ContactFormData {
   message: string
 }
 
-// Simple contact form service - v2.0 (no admin, no SELECT queries)
+// Simple contact form service - v3.0 (direct REST API to avoid SELECT)
 export const contactService = {
-  // Submit contact form - INSERT only, no SELECT
+  // Submit contact form using direct REST API - no Supabase client SELECT behavior
   async submitContactForm(formData: ContactFormData) {
-    console.log('📝 Submitting contact form...', { query_type: formData.query_type })
+    console.log('📝 Submitting contact form via REST API...', { query_type: formData.query_type })
 
-    // INSERT without SELECT - this prevents 401 errors from RLS
-    const { error } = await supabase
-      .from('inquiries')
-      .insert([{
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        subject: formData.subject?.trim() || null,
-        phone: formData.phone?.trim() || null,
-        query_type: formData.query_type,
-        message: formData.message.trim(),
-        status: 'new',
-        priority: 'medium'
-      }])
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-    if (error) {
-      console.error('❌ Supabase error:', error)
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/inquiries`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal' // This prevents SELECT after INSERT
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim().toLowerCase(),
+          subject: formData.subject?.trim() || null,
+          phone: formData.phone?.trim() || null,
+          query_type: formData.query_type,
+          message: formData.message.trim(),
+          status: 'new',
+          priority: 'medium'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error('❌ REST API error:', response.status, errorData)
+        throw new Error(`HTTP ${response.status}: ${errorData}`)
+      }
+
+      console.log('✅ Contact form submitted successfully via REST API!')
+      return { success: true }
+    } catch (error) {
+      console.error('❌ Contact form submission error:', error)
       throw error
     }
-
-    console.log('✅ Contact form submitted successfully!')
-    return { success: true } // Return simple success indicator
   }
 }
