@@ -19,10 +19,12 @@ export interface ContactFormData {
   message: string
 }
 
-// Simple contact form service
+// Simple contact form service - v2.0 (no admin, no SELECT queries)
 export const contactService = {
-  // Submit contact form
+  // Submit contact form - INSERT only, no SELECT
   async submitContactForm(formData: ContactFormData) {
+    console.log('📝 Submitting contact form...', { query_type: formData.query_type })
+
     const { data, error } = await supabase
       .from('inquiries')
       .insert([{
@@ -36,7 +38,12 @@ export const contactService = {
         priority: 'medium'
       }])
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Supabase error:', error)
+      throw error
+    }
+
+    console.log('✅ Contact form submitted successfully!')
     return data
   }
 }
