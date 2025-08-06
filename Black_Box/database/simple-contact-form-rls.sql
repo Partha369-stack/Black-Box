@@ -17,11 +17,15 @@ DROP POLICY IF EXISTS "Allow authenticated insert" ON inquiries;
 DROP POLICY IF EXISTS "Allow contact form submissions" ON inquiries;
 DROP POLICY IF EXISTS "Allow service role all operations" ON inquiries;
 
--- ONLY allow anonymous users to INSERT (submit contact form)
--- No SELECT, UPDATE, or DELETE permissions needed for a simple contact form
+-- Allow anonymous users to INSERT (submit contact form)
 CREATE POLICY "Allow contact form submissions" ON inquiries
 FOR INSERT TO anon
 WITH CHECK (true);
+
+-- TEMPORARY: Allow anon to SELECT (in case Supabase client needs it)
+CREATE POLICY "Allow anon select for debugging" ON inquiries
+FOR SELECT TO anon
+USING (true);
 
 -- Optional: Allow service role to read data (for you to manage via Supabase dashboard)
 -- This won't affect the website, only your admin access in Supabase dashboard
