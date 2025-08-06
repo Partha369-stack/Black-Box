@@ -25,7 +25,8 @@ export const contactService = {
   async submitContactForm(formData: ContactFormData) {
     console.log('📝 Submitting contact form...', { query_type: formData.query_type })
 
-    const { data, error } = await supabase
+    // INSERT without SELECT - this prevents 401 errors from RLS
+    const { error } = await supabase
       .from('inquiries')
       .insert([{
         name: formData.name.trim(),
@@ -44,6 +45,6 @@ export const contactService = {
     }
 
     console.log('✅ Contact form submitted successfully!')
-    return data
+    return { success: true } // Return simple success indicator
   }
 }
