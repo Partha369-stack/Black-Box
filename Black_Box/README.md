@@ -1,110 +1,46 @@
-# Black Box Landing Page
+# íº€ Black Box Landing Page
 
-A modern, responsive landing page for Black Box smart vending machine solutions built with React, TypeScript, and Tailwind CSS.
+A clean, modern landing page with contact form for Black Box IoT vending machines.
 
-## Features
+## âœ¨ Features
 
-- **Modern Design**: Sleek, professional design with gradient backgrounds and glass morphism effects
-- **Responsive**: Fully responsive design that works on all devices
-- **Animations**: Smooth animations using Framer Motion
-- **Interactive**: Interactive components with hover effects and transitions
-- **Accessible**: Built with accessibility in mind using Radix UI components
-- **Fast**: Optimized for performance with Vite build system
+- í¾¨ Modern, responsive design
+- í³± Mobile-optimized  
+- í³§ Contact form with Supabase integration
+- âš¡ Fast loading
+- í´’ SEO-friendly
 
-## Tech Stack
+## í» ï¸ Tech Stack
 
-- **React 18** - Modern React with hooks
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first CSS framework
-- **Framer Motion** - Animation library
-- **Radix UI** - Accessible component primitives
-- **Vite** - Fast build tool and dev server
-- **Lucide React** - Beautiful icons
+- **React + TypeScript + Vite**
+- **Tailwind CSS** 
+- **Supabase Database**
 
-## Getting Started
+## íº€ Quick Start
 
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
-
-### Installation
-
-1. Navigate to the LandingPage directory:
 ```bash
-cd LandingPage
-```
-
-2. Install dependencies:
-```bash
+# Install dependencies
 npm install
-```
 
-3. Start the development server:
-```bash
+# Start development server
 npm run dev
-```
 
-4. Open your browser and visit `http://localhost:5174`
-
-### Build for Production
-
-```bash
+# Build for production
 npm run build
 ```
 
-The built files will be in the `dist` directory.
+## í³Š What It Does
 
-## Project Structure
+Simple landing page where users can:
+1. Learn about Black Box vending machines
+2. Submit contact form inquiries
+3. Data saves automatically to Supabase
 
-```
-LandingPage/
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ components/
-â”‚   â”‚   â””â”€â”€ ui/           # Reusable UI components
-â”‚   â”œâ”€â”€ lib/
-â”‚   â”‚   â””â”€â”€ utils.ts      # Utility functions
-â”‚   â”œâ”€â”€ pages/
-â”‚   â”‚   â””â”€â”€ LandingPage.tsx # Main landing page component
-â”‚   â”œâ”€â”€ App.tsx           # Main app component
-â”‚   â”œâ”€â”€ main.tsx          # Entry point
-â”‚   â””â”€â”€ index.css         # Global styles
-â”œâ”€â”€ public/               # Static assets
-â””â”€â”€ dist/                 # Built files (generated)
-```
+## í¼ Deploy
 
-## Sections
+Ready for Railway, Vercel, or Netlify deployment!
 
-The landing page includes the following sections:
+## í³ Contact
 
-1. **Navigation** - Fixed header with mobile menu
-2. **Hero** - Eye-catching hero section with CTA buttons
-3. **Features** - Grid of key features with icons
-4. **Benefits** - Why choose Black Box with testimonials
-5. **CTA** - Call-to-action section
-6. **Contact** - Contact information cards
-7. **Footer** - Links and company information
-
-## Customization
-
-### Colors
-The color scheme can be customized in `tailwind.config.ts` and `src/index.css`.
-
-### Content
-Update the content in `src/pages/LandingPage.tsx` to match your specific needs.
-
-### Animations
-Framer Motion animations can be customized by modifying the motion components in the landing page.
-
-## Deployment
-
-This project can be deployed to any static hosting service:
-
-- **Vercel**: Connect your GitHub repo for automatic deployments
-- **Netlify**: Drag and drop the `dist` folder or connect via Git
-- **GitHub Pages**: Use GitHub Actions to build and deploy
-- **Railway**: Deploy directly from the repository
-
-## License
-
-This project is part of the Black Box vending machine system.
+- **Email**: black369box@gmail.com
+- **Phone**: +91 9163331360
