@@ -8,6 +8,10 @@ ALTER TABLE inquiries ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow anonymous inserts" ON inquiries;
 DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON inquiries;
 DROP POLICY IF EXISTS "Allow public read access" ON inquiries;
+DROP POLICY IF EXISTS "Allow public update access" ON inquiries;
+DROP POLICY IF EXISTS "Enable insert for anonymous users" ON inquiries;
+DROP POLICY IF EXISTS "Allow authenticated read" ON inquiries;
+DROP POLICY IF EXISTS "Allow authenticated update" ON inquiries;
 
 -- Policy 1: Allow anyone to insert inquiries (for contact form)
 CREATE POLICY "Allow anonymous inserts" ON inquiries
@@ -27,9 +31,28 @@ FOR UPDATE TO anon
 USING (true)
 WITH CHECK (true);
 
+-- Policy 4: Allow delete with anon key (for admin dashboard)
+CREATE POLICY "Allow public delete access" ON inquiries
+FOR DELETE TO anon
+USING (true);
+
+-- Also allow for authenticated users (backup)
+CREATE POLICY "Allow authenticated read" ON inquiries
+FOR SELECT TO authenticated
+USING (true);
+
+CREATE POLICY "Allow authenticated update" ON inquiries
+FOR UPDATE TO authenticated
+USING (true)
+WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated insert" ON inquiries
+FOR INSERT TO authenticated
+WITH CHECK (true);
+
 -- Verify the policies
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
-FROM pg_policies 
+FROM pg_policies
 WHERE tablename = 'inquiries';
 
 -- Test query to ensure it works

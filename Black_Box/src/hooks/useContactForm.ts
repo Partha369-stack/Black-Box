@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { inquiryService, InquiryInsert } from '@/lib/supabase'
+import { contactService, ContactFormData } from '@/lib/supabase'
 
-interface ContactFormData {
+// ContactFormData is now imported from supabase.ts
+interface LocalFormData {
   name: string
   email: string
   subject: string
@@ -17,7 +18,7 @@ interface ContactFormState {
 }
 
 export const useContactForm = () => {
-  const [formData, setFormData] = useState<ContactFormData>({
+  const [formData, setFormData] = useState<LocalFormData>({
     name: '',
     email: '',
     subject: '',
@@ -63,20 +64,18 @@ export const useContactForm = () => {
         throw new Error(validationError)
       }
 
-      // Prepare inquiry data
-      const inquiryData: InquiryInsert = {
+      // Prepare contact data
+      const contactData: ContactFormData = {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         subject: formData.subject.trim() || undefined,
         phone: formData.phone.trim() || undefined,
         query_type: formData.query_type as any,
-        message: formData.message.trim(),
-        status: 'new',
-        priority: determinePriority(formData.query_type, formData.message)
+        message: formData.message.trim()
       }
 
       // Submit to Supabase
-      await inquiryService.createInquiry(inquiryData)
+      await contactService.submitContactForm(contactData)
 
       setFormState({
         isLoading: false,
@@ -137,44 +136,4 @@ export const useContactForm = () => {
   }
 }
 
-// Helper function to determine priority based on query type and message content
-const determinePriority = (queryType: string, message: string): 'low' | 'medium' | 'high' | 'urgent' => {
-  const urgentKeywords = ['urgent', 'emergency', 'broken', 'stuck', 'error', 'not working', 'issue', 'problem']
-  const highKeywords = ['asap', 'quickly', 'soon', 'important', 'help']
-  
-  const lowerMessage = message.toLowerCase()
-  
-  // Check for urgent keywords
-  if (urgentKeywords.some(keyword => lowerMessage.includes(keyword))) {
-    return 'urgent'
-  }
-  
-  // Support queries are generally higher priority
-  if (queryType === 'support') {
-    if (highKeywords.some(keyword => lowerMessage.includes(keyword))) {
-      return 'high'
-    }
-    return 'medium'
-  }
-  
-  // Check for high priority keywords
-  if (highKeywords.some(keyword => lowerMessage.includes(keyword))) {
-    return 'high'
-  }
-  
-  // Default priorities by query type
-  switch (queryType) {
-    case 'support':
-      return 'medium'
-    case 'feedback':
-      return 'low'
-    case 'general':
-      return 'low'
-    case 'location':
-      return 'medium'
-    case 'products':
-      return 'medium'
-    default:
-      return 'medium'
-  }
-}
+// Priority determination is now handled in the backend - removed for simplicity
