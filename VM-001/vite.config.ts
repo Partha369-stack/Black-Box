@@ -9,13 +9,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: true,
     port: 8083, // Change from 8084 to 8083 if desired
-    cors: true,
-    // allowedHosts: [
-    //   'localhost',
-    //   '297b-2401-4900-76cd-6a6b-692e-b973-c903-56a7.ngrok-free.app',
-    //   '706c-2401-4900-76cd-6a6b-692e-b973-c903-56a7.ngrok-free.app',
-    //   '8abf-2401-4900-76cd-6a6b-692e-b973-c903-56a7.ngrok-free.app'
-    // ],
+    cors: true,  
     proxy: {
       '/api': 'https://black-box-production.up.railway.app',
     },

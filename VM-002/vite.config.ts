@@ -10,15 +10,6 @@ export default defineConfig(({ mode }) => ({
     host: true,
     port: 8084,
     cors: true,
-    // For ngrok hosting, add each new ngrok URL here as a string when you get a new one.
-    // Example: 'xxxx-xxxx-xxxx.ngrok-free.app'
-    allowedHosts: [
-      'localhost',
-      '297b-2401-4900-76cd-6a6b-692e-b973-c903-56a7.ngrok-free.app', // previous ngrok
-      '706c-2401-4900-76cd-6a6b-692e-b973-c903-56a7.ngrok-free.app',  // current ngrok
-      '8abf-2401-4900-76cd-6a6b-692e-b973-c903-56a7.ngrok-free.app'   // current ngrok
-      // Add new ngrok URLs here as needed
-    ],
     proxy: {
       '/api': 'https://black-box-production.up.railway.app',
     },
