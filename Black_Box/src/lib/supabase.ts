@@ -32,6 +32,25 @@ export const contactService = {
     console.log('🔑 Using Supabase URL:', supabaseUrl)
     console.log('🔑 Using API key:', supabaseKey ? `${supabaseKey.substring(0, 20)}...` : 'MISSING')
 
+    // First, test if the API key is valid
+    console.log('🧪 Testing API key validity...')
+    try {
+      const testResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      })
+      console.log('🧪 API key test response:', testResponse.status)
+
+      if (testResponse.status === 401) {
+        throw new Error('API key is invalid or expired. Please get a fresh anon key from Supabase dashboard.')
+      }
+    } catch (testError) {
+      console.error('🧪 API key test failed:', testError)
+    }
+
     try {
       const response = await fetch(`${supabaseUrl}/rest/v1/inquiries`, {
         method: 'POST',
